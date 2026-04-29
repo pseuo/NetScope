@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ if .Title }}{{ .Title }}{{ else }}IP 工具{{ end }}</title>
+  <meta name="description" content="{{ if .Description }}{{ .Description }}{{ else }}在线 IP、CIDR、子网掩码、IPv4、IPv6 和网络地址计算工具。{{ end }}" />
+  <link rel="canonical" href="https://www.ip.network/tools" id="canonicalLink" />
+  <style>
+    :root {
+      --bg: #eef5ff;
+      --card: rgba(255, 255, 255, 0.88);
+      --text: #102033;
+      --muted: #64748b;
+      --line: rgba(51, 65, 85, 0.14);
+      --brand: #1768ff;
+      --brand-2: #00a6ff;
+      --soft: rgba(23, 104, 255, 0.09);
+      --bad: #b91c1c;
+      --good: #047857;
+      --shadow: 0 22px 55px rgba(15, 45, 95, 0.12);
+      --font: "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(900px 420px at -10% -10%, rgba(23, 104, 255, 0.20), transparent 62%),
+        radial-gradient(820px 440px at 105% -15%, rgba(0, 166, 255, 0.18), transparent 60%),
+        linear-gradient(160deg, var(--bg), #fbfdff);
+    }
+
+    .wrap { width: min(1120px, calc(100% - 24px)); margin: 18px auto 32px; }
+
+    .topbar, .hero, .panel, .card {
+      border: 1px solid var(--line);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      position: sticky;
+      top: 14px;
+      z-index: 10;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+    .logo { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(145deg, var(--brand), var(--brand-2)); box-shadow: 0 10px 22px rgba(23, 104, 255, 0.28); }
+    .brand strong { display: block; font-size: 15px; }
+    .brand span { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+
+    .topbar-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .nav a, button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .nav a:hover, button:hover { transform: translateY(-1px); border-color: rgba(23, 104, 255, 0.35); }
+    button.primary { color: #fff; border-color: transparent; background: linear-gradient(145deg, var(--brand), #0f56da); box-shadow: 0 12px 24px rgba(23, 104, 255, 0.25); }
+    .menu-toggle { display: none; }
+
+    .hero {
+      margin-top: 14px;
+      border-radius: 26px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+      gap: 18px;
+      align-items: center;
+    }
+    .eyebrow { color: var(--brand); font-size: 13px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { margin: 9px 0 10px; font-size: clamp(28px, 4vw, 42px); line-height: 1.1; letter-spacing: -0.5px; }
+    .hero p, .desc { margin: 0; color: var(--muted); line-height: 1.75; }
+    .hero-card { border: 1px solid rgba(23, 104, 255, 0.14); background: var(--soft); border-radius: 20px; padding: 18px; }
+    .hero-card strong { display: block; margin-bottom: 8px; }
+    .hero-card p { font-size: 13px; }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; margin-top: 14px; }
+    .panel, .card { border-radius: 24px; padding: 20px; }
+    h2 { margin: 0 0 8px; font-size: 22px; }
+    h3 { margin: 0 0 10px; font-size: 16px; }
+
+    .field { margin-top: 14px; }
+    label { display: block; margin-bottom: 7px; color: #334155; font-size: 13px; font-weight: 700; }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 13px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+    textarea { min-height: 156px; resize: vertical; font-family: "SFMono-Regular", Consolas, monospace; line-height: 1.55; }
+    input:focus, textarea:focus, select:focus { border-color: rgba(23, 104, 255, 0.55); box-shadow: 0 0 0 4px rgba(23, 104, 255, 0.10); }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .result { margin-top: 16px; display: grid; gap: 10px; }
+    .item { border: 1px solid var(--line); background: rgba(255, 255, 255, 0.72); border-radius: 18px; padding: 13px; }
+    .item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .item code, pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; }
+    .result-table { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: rgba(255, 255, 255, 0.72); }
+    .result-row { display: grid; grid-template-columns: minmax(150px, 0.36fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 13px; border-top: 1px solid var(--line); }
+    .result-row:first-child { border-top: 0; }
+    .result-key { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .result-value { overflow-wrap: anywhere; font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; }
+    .copy-btn { padding: 7px 10px; font-size: 12px; }
+    .error { color: var(--bad); font-weight: 700; }
+    .ok { color: var(--good); font-weight: 700; }
+
+    .tool-list { display: grid; gap: 8px; }
+    .tool-search { margin: 0 0 12px; }
+    .tool-group { margin-top: 14px; }
+    .tool-group-title { color: var(--muted); font-size: 12px; font-weight: 800; margin: 0 0 8px; }
+    .tool-list a { display: block; padding: 11px 12px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,0.72); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 700; }
+    .tool-list a.active { border-color: rgba(23, 104, 255, 0.35); background: var(--soft); color: #0f56da; }
+    .note { margin-top: 14px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .home-card { border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,0.72); padding: 15px; text-decoration: none; color: inherit; transition: transform 160ms ease, border-color 160ms ease; }
+    .home-card:hover { transform: translateY(-1px); border-color: rgba(23, 104, 255, 0.35); }
+    .home-card strong { display: block; margin-bottom: 6px; }
+    .home-card span { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    @media (max-width: 860px) {
+      .wrap { width: min(1120px, calc(100% - 18px)); margin-top: 10px; }
+      .topbar { align-items: stretch; border-radius: 22px; flex-direction: column; top: 8px; }
+      .topbar-head { width: 100%; }
+      .brand { min-width: 0; }
+      .brand > span:last-child { min-width: 0; }
+      .brand strong, .brand span span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .menu-toggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+      .nav { display: none; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; }
+      .nav.is-open { display: grid; }
+      .nav a { display: inline-flex; align-items: center; justify-content: center; width: 100%; text-align: center; }
+      .hero, .layout { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .home-grid { grid-template-columns: 1fr; }
+      .result-row { grid-template-columns: 1fr; }
+      .copy-btn { width: fit-content; }
+    }
+
+    @media (max-width: 420px) {
+      .nav { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-head">
+        <a class="brand" href="/">
+          <span class="logo" aria-hidden="true"></span>
+          <span><strong>IP 网络工具</strong><span>在线 IP、CIDR 与掩码计算</span></span>
+        </a>
+        <button id="menuToggleBtn" class="menu-toggle" type="button" aria-expanded="false" aria-controls="topNav">菜单</button>
+      </div>
+      <nav class="nav" id="topNav">
+        <a href="/">NetScope</a>
+        <a href="/ip-look">IP 查询</a>
+        <a href="/nat-test">NAT 检测</a>
+        <a href="/bandwidth-calculator">带宽计算器</a>
+        <a href="/screen-test">屏幕检测</a>
+        <button id="langBtn" type="button">EN</button>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow" id="toolKicker">Network Tool</div>
+        <h1 id="toolTitle">IP 工具</h1>
+        <p id="toolDesc">在浏览器本地完成计算，不上传输入内容。</p>
+      </div>
+      <div class="hero-card">
+        <strong>本地计算</strong>
+        <p>IPv4、IPv6、CIDR、NAT64 和通配符掩码转换都在当前页面完成，适合网络规划、ACL 配置和故障排查。</p>
+      </div>
+    </section>
+
+    <main class="layout">
+      <section class="panel">
+        <h2 id="formTitle">输入</h2>
+        <p class="desc" id="formDesc">填写参数后点击计算。</p>
+        <div id="formFields"></div>
+        <div class="actions">
+          <button class="primary" type="button" id="calcBtn">计算</button>
+          <button type="button" id="sampleBtn">填入示例</button>
+          <button type="button" id="clearBtn">清空</button>
+        </div>
+        <div class="result" id="result"></div>
+      </section>
+
+      <aside class="card">
+        <h3>其他 IP 工具</h3>
+        <input class="tool-search" id="toolSearch" type="search" placeholder="搜索工具：CIDR、IPv6、掩码" />
+        <div class="tool-list" id="toolList"></div>
+        <p class="note" id="toolNote">提示：CIDR 聚合会先规范化网络段，再尽可能合并连续地址块。</p>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/assets/js/mobile-nav.js"></script>
+  <script src="/assets/js/ip-tools-i18n.js"></script>
+  <script>
+    const pages = {
+      "ipv4-representations": {
+        group: "IPv4 工具",
+        title: "IPv4 地址表示转换器",
+        kicker: "IPv4 Representations",
+        desc: "把 IPv4 地址转换为十进制整数、十六进制、二进制、八进制和反向 DNS 表示。",
+        form: "输入一个 IPv4 地址，查看常见表示方法。",
+        note: "十进制整数常用于数据库存储；in-addr.arpa 常用于 PTR 反向解析。",
+        sample: { ip: "192.168.1.10" },
+        fields: [{ id: "ip", label: "IPv4 地址", type: "input", placeholder: "例如 192.168.1.10" }],
+        run: values => {
+          const n = ipv4ToInt(values.ip);
+          const parts = intToIPv4Parts(n);
+          return rows([
+            ["标准点分十进制", intToIPv4(n)],
+            ["十进制整数", String(n)],
+            ["十六进制", "0x" + n.toString(16).padStart(8, "0").toUpperCase()],
+            ["二进制", parts.map(x => x.toString(2).padStart(8, "0")).join(".")],
+            ["八进制", parts.map(x => "0" + x.toString(8).padStart(3, "0")).join(".")],
+            ["反向 DNS", parts.slice().reverse().join(".") + ".in-addr.arpa"]
+          ]);
+        }
+      },
+      "ipv6-nat64": {
+        group: "IPv6 工具",
+        title: "IPv6 NAT64 地址转换器",
+        kicker: "IPv6 NAT64",
+        desc: "根据 NAT64 前缀和 IPv4 地址生成 IPv6 NAT64 地址，也可从标准 /96 NAT64 地址中提取 IPv4。",
+        form: "输入 IPv4 与 NAT64 前缀，或输入已有 NAT64 IPv6 地址。",
+        note: "默认前缀 64:ff9b::/96 是 RFC 6052 定义的 Well-Known Prefix。",
+        sample: { ipv4: "203.0.113.8", prefix: "64:ff9b::/96", nat64: "64:ff9b::cb00:7108" },
+        fields: [
+          { id: "ipv4", label: "IPv4 地址", type: "input", placeholder: "例如 203.0.113.8" },
+          { id: "prefix", label: "NAT64 前缀", type: "input", placeholder: "例如 64:ff9b::/96" },
+          { id: "nat64", label: "NAT64 IPv6 地址（可选，用于反解）", type: "input", placeholder: "例如 64:ff9b::cb00:7108" }
+        ],
+        run: values => {
+          const out = [];
+          if (values.ipv4.trim()) out.push(["生成的 NAT64 IPv6", makeNat64(values.prefix || "64:ff9b::/96", values.ipv4)]);
+          if (values.nat64.trim()) out.push(["从 IPv6 提取 IPv4", extractNat64IPv4(values.nat64)]);
+          if (!out.length) throw new Error("请至少输入 IPv4 地址或 NAT64 IPv6 地址");
+          return rows(out);
+        }
+      },
+      "ipv4-range-to-cidr": {
+        group: "CIDR / 子网工具",
+        title: "IPv4 范围转 CIDR",
+        kicker: "IPv4 Range to CIDR",
+        desc: "把起止 IPv4 地址范围拆分为最少数量的 CIDR 网段。",
+        form: "输入起始和结束 IPv4 地址。",
+        note: "生成结果适合路由表、访问控制列表和防火墙规则。",
+        sample: { start: "192.168.1.10", end: "192.168.1.250" },
+        fields: [
+          { id: "start", label: "起始 IPv4", type: "input", placeholder: "例如 192.168.1.10" },
+          { id: "end", label: "结束 IPv4", type: "input", placeholder: "例如 192.168.1.250" }
+        ],
+        run: values => pre(ipv4RangeToCIDR(ipv4ToInt(values.start), ipv4ToInt(values.end)).join("\n"))
+      },
+      "cidr-aggregator": {
+        group: "CIDR / 子网工具",
+        title: "CIDR 聚合器",
+        kicker: "CIDR Aggregator",
+        desc: "合并重叠或连续的 IPv4 CIDR，输出更短的等价网段列表。",
+        form: "每行输入一个 IPv4 CIDR。",
+        note: "当前聚合器支持 IPv4 CIDR；IPv6 范围转换请使用 IPv6 Range to CIDR。",
+        sample: { cidrs: "192.168.0.0/25\n192.168.0.128/25\n192.168.1.0/24\n10.0.0.0/24" },
+        fields: [{ id: "cidrs", label: "CIDR 列表", type: "textarea", placeholder: "192.168.0.0/25\n192.168.0.128/25" }],
+        run: values => pre(aggregateCIDRs(values.cidrs).join("\n"))
+      },
+      "ipv4-cidr-to-netmask": {
+        group: "IPv4 工具",
+        title: "IPv4 CIDR 与子网掩码转换",
+        kicker: "IPv4 CIDR to Netmask",
+        desc: "把 IPv4 CIDR 前缀长度转换为子网掩码、通配符掩码、主机数和地址范围。",
+        form: "输入 CIDR，例如 192.168.1.0/24 或 /27。",
+        note: "/31 常用于点到点链路，/32 表示单个主机地址。",
+        sample: { cidr: "192.168.1.0/24" },
+        fields: [{ id: "cidr", label: "IPv4 CIDR 或前缀", type: "input", placeholder: "例如 192.168.1.0/24 或 /24" }],
+        run: values => {
+          const parsed = parseIPv4CIDR(values.cidr);
+          const mask = prefixMask(parsed.prefix);
+          const wildcard = (~mask) >>> 0;
+          const network = (parsed.ip & mask) >>> 0;
+          const broadcast = (network | wildcard) >>> 0;
+          const total = 2 ** (32 - parsed.prefix);
+          const usable = parsed.prefix >= 31 ? total : Math.max(0, total - 2);
+          return rows([
+            ["网络地址", intToIPv4(network)],
+            ["广播地址", intToIPv4(broadcast)],
+            ["子网掩码", intToIPv4(mask)],
+            ["通配符掩码", intToIPv4(wildcard)],
+            ["前缀长度", "/" + parsed.prefix],
+            ["地址总数", String(total)],
+            ["可用主机数", String(usable)]
+          ]);
+        }
+      },
+      "ipv6-range-to-cidr": {
+        group: "IPv6 工具",
+        title: "IPv6 范围转 CIDR",
+        kicker: "IPv6 Range to CIDR",
+        desc: "把起止 IPv6 地址范围拆分为最少数量的 IPv6 CIDR 网段。",
+        form: "输入起始和结束 IPv6 地址，支持 :: 压缩写法。",
+        note: "IPv6 计算使用 BigInt 在浏览器本地完成。",
+        sample: { start: "2001:db8::", end: "2001:db8::ff" },
+        fields: [
+          { id: "start", label: "起始 IPv6", type: "input", placeholder: "例如 2001:db8::" },
+          { id: "end", label: "结束 IPv6", type: "input", placeholder: "例如 2001:db8::ff" }
+        ],
+        run: values => pre(ipv6RangeToCIDR(parseIPv6(values.start), parseIPv6(values.end)).join("\n"))
+      },
+      "ipv4-wildcard-mask": {
+        group: "IPv4 工具",
+        title: "IPv4 通配符掩码计算器",
+        kicker: "IPv4 Wildcard Mask",
+        desc: "在子网掩码、CIDR 前缀和 ACL 通配符掩码之间互相转换。",
+        form: "输入 CIDR 或子网掩码。",
+        note: "Cisco ACL 中的 wildcard mask 是子网掩码逐位取反，例如 /24 对应 0.0.0.255。",
+        sample: { value: "192.168.10.0/24" },
+        fields: [{ id: "value", label: "CIDR、前缀或子网掩码", type: "input", placeholder: "例如 192.168.10.0/24、/24 或 255.255.255.0" }],
+        run: values => {
+          const parsed = parseMaskInput(values.value);
+          const mask = prefixMask(parsed.prefix);
+          const wildcard = (~mask) >>> 0;
+          const out = [["前缀长度", "/" + parsed.prefix], ["子网掩码", intToIPv4(mask)], ["通配符掩码", intToIPv4(wildcard)]];
+          if (parsed.ip !== null) out.unshift(["网络地址", intToIPv4((parsed.ip & mask) >>> 0)]);
+          return rows(out);
+        }
+      },
+      "ipv4-subnet-calculator": {
+        group: "CIDR / 子网工具",
+        title: "IPv4 子网计算器",
+        kicker: "IPv4 Subnet Calculator",
+        desc: "根据 IPv4 地址和 CIDR 前缀计算网络地址、广播地址、主机范围、子网掩码和通配符掩码。",
+        form: "输入一个 IPv4 CIDR，例如 192.168.10.34/27。",
+        note: "如果输入的是主机地址，结果会自动归一化到所在子网。",
+        sample: { cidr: "192.168.10.34/27" },
+        fields: [{ id: "cidr", label: "IPv4 CIDR", type: "input", placeholder: "例如 192.168.10.34/27" }],
+        run: values => {
+          const parsed = parseIPv4CIDR(values.cidr);
+          const mask = prefixMask(parsed.prefix);
+          const wildcard = (~mask) >>> 0;
+          const network = (parsed.ip & mask) >>> 0;
+          const broadcast = (network | wildcard) >>> 0;
+          const total = 2 ** (32 - parsed.prefix);
+          const firstHost = parsed.prefix >= 31 ? network : network + 1;
+          const lastHost = parsed.prefix >= 31 ? broadcast : broadcast - 1;
+          const usable = parsed.prefix >= 31 ? total : Math.max(0, total - 2);
+          return rows([
+            ["输入地址", intToIPv4(parsed.ip)],
+            ["CIDR", intToIPv4(network) + "/" + parsed.prefix],
+            ["网络地址", intToIPv4(network)],
+            ["广播地址", intToIPv4(broadcast)],
+            ["第一个可用地址", intToIPv4(firstHost)],
+            ["最后一个可用地址", intToIPv4(lastHost)],
+            ["子网掩码", intToIPv4(mask)],
+            ["通配符掩码", intToIPv4(wildcard)],
+            ["地址总数", String(total)],
+            ["可用主机数", String(usable)]
+          ]);
+        }
+      },
+      "ipv6-subnet-calculator": {
+        group: "IPv6 工具",
+        title: "IPv6 子网计算器",
+        kicker: "IPv6 Subnet Calculator",
+        desc: "根据 IPv6 地址和前缀长度计算网络地址、范围末尾地址、地址数量和可再划分子网数量。",
+        form: "输入 IPv6 CIDR，并可选填写目标子网前缀。",
+        note: "IPv6 没有广播地址；范围末尾地址只是该前缀内的最后一个地址。",
+        sample: { cidr: "2001:db8:1234:5678::1/64", childPrefix: "80" },
+        fields: [
+          { id: "cidr", label: "IPv6 CIDR", type: "input", placeholder: "例如 2001:db8:1234:5678::1/64" },
+          { id: "childPrefix", label: "目标子网前缀（可选）", type: "input", placeholder: "例如 80" }
+        ],
+        run: values => {
+          const parsed = parseIPv6CIDR(values.cidr);
+          const mask = ipv6PrefixMask(parsed.prefix);
+          const network = parsed.ip & mask;
+          const hostMask = ((1n << 128n) - 1n) ^ mask;
+          const last = network | hostMask;
+          const total = 1n << BigInt(128 - parsed.prefix);
+          const out = [
+            ["输入地址", formatIPv6(parsed.ip)],
+            ["CIDR", formatIPv6(network) + "/" + parsed.prefix],
+            ["网络地址", formatIPv6(network)],
+            ["范围末尾地址", formatIPv6(last)],
+            ["前缀长度", "/" + parsed.prefix],
+            ["地址数量", formatBigInt(total)]
+          ];
+          if (values.childPrefix.trim()) {
+            const child = Number(values.childPrefix.trim().replace(/^\//, ""));
+            if (!Number.isInteger(child) || child < parsed.prefix || child > 128) throw new Error("目标子网前缀必须在当前前缀到 128 之间");
+            out.push(["可划分子网数量", formatBigInt(1n << BigInt(child - parsed.prefix))]);
+            out.push(["每个子网地址数", formatBigInt(1n << BigInt(128 - child))]);
+          }
+          return rows(out);
+        }
+      },
+      "network-ip-calculator": {
+        group: "CIDR / 子网工具",
+        title: "网络和 IP 地址计算器",
+        kicker: "Network and IP Calculator",
+        desc: "输入 IPv4 地址和网络掩码位，计算可用 IP 数、子网掩码、网络地址、首末可用地址和广播地址。",
+        form: "输入完整 IPv4 地址和掩码位。掩码位格式也称为 CIDR 格式（CIDR = 无类别域间路由选择）。",
+        note: "下方同时提供子网掩码转换器，把位格式转换为点分十进制和十六进制格式。",
+        sample: { ip: "192.168.0.1", bits: "24" },
+        fields: [
+          { id: "ip", label: "IP 地址", type: "input", placeholder: "192.168.0.1" },
+          { id: "bits", label: "掩码位（CIDR，默认 24）", type: "number", min: 0, max: 32, placeholder: "24" }
+        ],
+        run: values => {
+          const ip = ipv4ToInt(values.ip);
+          const prefix = parseIPv4Prefix(values.bits || "24");
+          const mask = prefixMask(prefix);
+          const wildcard = (~mask) >>> 0;
+          const network = (ip & mask) >>> 0;
+          const broadcast = (network | wildcard) >>> 0;
+          const total = 2 ** (32 - prefix);
+          const usable = prefix >= 31 ? total : Math.max(0, total - 2);
+          const first = prefix >= 31 ? network : network + 1;
+          const last = prefix >= 31 ? broadcast : broadcast - 1;
+          const maskParts = intToIPv4Parts(mask);
+          const hexParts = maskParts.map(part => part.toString(16).padStart(2, "0").toUpperCase());
+          return rows([
+            ["输入 IP", intToIPv4(ip)],
+            ["掩码位 / CIDR", "/" + prefix],
+            ["可用 IP", String(usable)],
+            ["掩码", intToIPv4(mask)],
+            ["网络", intToIPv4(network)],
+            ["第一可用", intToIPv4(first)],
+            ["最后可用", intToIPv4(last)],
+            ["广播", intToIPv4(broadcast)],
+            ["子网掩码转换器 - 位", String(prefix)],
+            ["Dec 十进制", maskParts.join(" ")],
+            ["Hex 十六进制", hexParts.join(" ")]
+          ]);
+        }
+      },
+      "ipv6-expand-compress": {
+        group: "IPv6 工具",
+        title: "IPv6 展开 / 压缩工具",
+        kicker: "IPv6 Expand Compress",
+        desc: "把 IPv6 地址转换为完整展开格式和 RFC 5952 风格的压缩格式。",
+        form: "输入一个 IPv6 地址，支持 :: 压缩写法和 IPv4 映射写法。",
+        note: "展开格式包含 8 个 16 位分组；压缩格式会压缩最长的连续 0 分组并使用小写十六进制。",
+        sample: { ipv6: "2001:db8::ff00:42:8329" },
+        fields: [{ id: "ipv6", label: "IPv6 地址", type: "input", placeholder: "例如 2001:db8::ff00:42:8329" }],
+        run: values => {
+          const value = parseIPv6(values.ipv6);
+          const parts = ipv6Parts(value);
+          return rows([
+            ["压缩格式", formatIPv6(value)],
+            ["完整展开格式", parts.map(part => part.padStart(4, "0")).join(":")],
+            ["十六进制分组", parts.map(part => part.toUpperCase().padStart(4, "0")).join(" ")],
+            ["十进制整数", value.toString()]
+          ]);
+        }
+      },
+      "address-count-by-prefix": {
+        group: "转换 / 验证工具",
+        title: "按前缀长度计算地址数量",
+        kicker: "Address Count by Prefix",
+        desc: "根据 IPv4 或 IPv6 的 CIDR 前缀长度计算该网段包含的地址数量。",
+        form: "选择 IP 版本并输入前缀长度，例如 IPv4 /24 或 IPv6 /64。",
+        note: "IPv4 同时显示传统可用主机数量；IPv6 通常不扣除网络和广播地址。",
+        sample: { version: "IPv4", prefix: "24" },
+        fields: [
+          { id: "version", label: "IP 版本", type: "select", options: ["IPv4", "IPv6"] },
+          { id: "prefix", label: "前缀长度", type: "number", min: 0, max: 128, placeholder: "例如 24 或 64" }
+        ],
+        run: values => {
+          const version = parseIPVersion(values.version);
+          const maxBits = version === 4 ? 32 : 128;
+          const prefix = parsePrefixForVersion(values.prefix, maxBits);
+          const hostBits = maxBits - prefix;
+          const total = 1n << BigInt(hostBits);
+          const out = [
+            ["IP 版本", "IPv" + version],
+            ["前缀长度", "/" + prefix],
+            ["主机位数", String(hostBits)],
+            ["地址数量", formatBigInt(total)],
+            ["2 的幂表示", "2^" + hostBits]
+          ];
+          if (version === 4) {
+            const usable = prefix >= 31 ? total : total > 2n ? total - 2n : 0n;
+            out.push(["IPv4 可用主机数", formatBigInt(usable)]);
+            out.push(["IPv4 子网掩码", intToIPv4(prefixMask(prefix))]);
+          }
+          return rows(out);
+        }
+      },
+      "cidr-to-ip-range": {
+        group: "CIDR / 子网工具",
+        title: "CIDR 转 IP 范围",
+        kicker: "CIDR to IP Range",
+        desc: "把 IPv4 CIDR 转换为网络地址、广播地址、首末可用地址和地址数量。",
+        form: "输入 IPv4 CIDR，例如 192.168.0.0/24。",
+        note: "适合快速确认某个路由或 ACL 网段覆盖的地址范围。",
+        sample: { cidr: "192.168.0.0/24" },
+        fields: [{ id: "cidr", label: "IPv4 CIDR", type: "input", placeholder: "例如 192.168.0.0/24" }],
+        run: values => ipv4RangeRows(parseCIDR(values.cidr))
+      },
+      "netmask-to-cidr": {
+        group: "IPv4 工具",
+        title: "子网掩码转 CIDR",
+        kicker: "Netmask to CIDR",
+        desc: "把点分十进制子网掩码转换为 CIDR 前缀、通配符掩码和地址数量。",
+        form: "输入 IPv4 子网掩码，例如 255.255.255.0。",
+        note: "子网掩码必须是连续的 1 后跟连续的 0。",
+        sample: { netmask: "255.255.255.0" },
+        fields: [{ id: "netmask", label: "子网掩码", type: "input", placeholder: "例如 255.255.255.0" }],
+        run: values => {
+          const parsed = parseMaskInput(values.netmask);
+          const mask = prefixMask(parsed.prefix);
+          const total = 2 ** (32 - parsed.prefix);
+          return rows([
+            ["CIDR", "/" + parsed.prefix],
+            ["子网掩码", intToIPv4(mask)],
+            ["通配符掩码", intToIPv4((~mask) >>> 0)],
+            ["地址总数", String(total)],
+            ["可用主机数", String(parsed.prefix >= 31 ? total : Math.max(0, total - 2))]
+          ]);
+        }
+      },
+      "ipv6-cidr-to-range": {
+        group: "IPv6 工具",
+        title: "IPv6 CIDR 转范围",
+        kicker: "IPv6 CIDR to Range",
+        desc: "把 IPv6 CIDR 转换为网络地址、范围末尾地址和地址数量。",
+        form: "输入 IPv6 CIDR，例如 2001:db8::/64。",
+        note: "IPv6 没有广播地址；末尾地址只是该前缀范围内最后一个地址。",
+        sample: { cidr: "2001:db8::/64" },
+        fields: [{ id: "cidr", label: "IPv6 CIDR", type: "input", placeholder: "例如 2001:db8::/64" }],
+        run: values => {
+          const parsed = parseIPv6CIDR(values.cidr);
+          const range = ipv6CIDRRange(parsed);
+          return rows([
+            ["CIDR", formatIPv6(range.start) + "/" + parsed.prefix],
+            ["网络地址", formatIPv6(range.start)],
+            ["范围末尾地址", formatIPv6(range.end)],
+            ["地址数量", formatBigInt(range.total)],
+            ["2 的幂表示", "2^" + (128 - parsed.prefix)]
+          ]);
+        }
+      },
+      "ip-address-type": {
+        group: "转换 / 验证工具",
+        title: "IP 地址类型判断",
+        kicker: "IP Address Type",
+        desc: "判断 IPv4 或 IPv6 地址是公网、私网、回环、链路本地、多播、保留、文档示例或 CGNAT。",
+        form: "输入任意 IPv4 或 IPv6 地址。",
+        note: "类型判断基于常见 IANA/RFC 地址范围，适合排查地址是否可公网路由。",
+        sample: { ip: "100.64.12.3" },
+        fields: [{ id: "ip", label: "IP 地址", type: "input", placeholder: "例如 100.64.12.3 或 2001:db8::1" }],
+        run: values => rows(ipAddressTypeRows(values.ip))
+      },
+      "ip-validator": {
+        group: "转换 / 验证工具",
+        title: "IPv4 / IPv6 验证器",
+        kicker: "IP Validator",
+        desc: "验证输入是否为合法 IPv4 或 IPv6 地址，并输出规范化格式和版本。",
+        form: "输入一个 IP 地址。",
+        note: "如果地址不合法，会显示具体错误原因。",
+        sample: { ip: "2001:db8::1" },
+        fields: [{ id: "ip", label: "IP 地址", type: "input", placeholder: "例如 8.8.8.8 或 2001:db8::1" }],
+        run: values => rows(validateIPRows(values.ip))
+      },
+      "reverse-dns-generator": {
+        group: "转换 / 验证工具",
+        title: "反向 DNS 名称生成器",
+        kicker: "Reverse DNS Generator",
+        desc: "为 IPv4 生成 in-addr.arpa，为 IPv6 生成 ip6.arpa 反向解析名称。",
+        form: "输入 IPv4 或 IPv6 地址。",
+        note: "IPv6 反向 DNS 使用完整展开地址的每个十六进制半字节反转。",
+        sample: { ip: "2001:db8::1" },
+        fields: [{ id: "ip", label: "IP 地址", type: "input", placeholder: "例如 192.0.2.1 或 2001:db8::1" }],
+        run: values => rows(reverseDNSRows(values.ip))
+      },
+      "subnet-splitter": {
+        group: "CIDR / 子网工具",
+        title: "子网拆分器",
+        kicker: "Subnet Splitter",
+        desc: "把 IPv4 或 IPv6 CIDR 拆分为更小的目标前缀子网。",
+        form: "输入父级 CIDR 和目标前缀。为避免页面过长，最多显示前 256 个子网。",
+        note: "目标前缀必须大于或等于父级前缀。",
+        sample: { cidr: "192.168.0.0/24", childPrefix: "26" },
+        fields: [
+          { id: "cidr", label: "父级 CIDR", type: "input", placeholder: "例如 192.168.0.0/24 或 2001:db8::/48" },
+          { id: "childPrefix", label: "目标前缀", type: "number", min: 0, max: 128, placeholder: "例如 26 或 64" }
+        ],
+        run: values => pre(splitSubnet(values.cidr, values.childPrefix).join("\n"))
+      },
+      "bulk-ip-calculator": {
+        group: "CIDR / 子网工具",
+        title: "IP 地址批量计算",
+        kicker: "Bulk IP Calculator",
+        desc: "批量计算多行 IPv4 CIDR 的网络地址、广播地址、首末可用地址和地址数量。",
+        form: "每行输入一个 IPv4 CIDR。",
+        note: "适合批量整理路由表、ACL 或网络规划清单。",
+        sample: { cidrs: "192.168.0.0/24\n10.0.0.0/30\n172.16.8.10/28" },
+        fields: [{ id: "cidrs", label: "IPv4 CIDR 列表", type: "textarea", placeholder: "192.168.0.0/24\n10.0.0.0/30" }],
+        run: values => pre(bulkIPv4(values.cidrs))
+      }
+    };
+
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    const slug = pathParts[0] === "tools" && pathParts.length > 1 ? pathParts.pop() : "";
+    const isHome = !slug;
+    const page = isHome ? null : (pages[slug] || pages["network-ip-calculator"]);
+    const $ = id => document.getElementById(id);
+    const translations = window.IP_TOOLS_TRANSLATIONS || {
+      "在线 IP、CIDR 与掩码计算": "Online IP, CIDR and mask calculator",
+      "菜单": "Menu",
+      "NetScope": "NetScope",
+      "IP 查询": "IP Lookup",
+      "NAT 检测": "NAT Test",
+      "带宽计算器": "Bandwidth Calculator",
+      "屏幕检测": "Screen Test",
+      "IP 工具": "IP Tools",
+      "在浏览器本地完成计算，不上传输入内容。": "Run calculations locally in your browser. Inputs are not uploaded.",
+      "本地计算": "Local Calculation",
+      "IPv4、IPv6、CIDR、NAT64 和通配符掩码转换都在当前页面完成，适合网络规划、ACL 配置和故障排查。": "IPv4, IPv6, CIDR, NAT64, and wildcard-mask conversions all run on this page for planning, ACLs, and troubleshooting.",
+      "输入": "Input",
+      "填写参数后点击计算。": "Enter values, then click Calculate.",
+      "计算": "Calculate",
+      "填入示例": "Load Example",
+      "清空": "Clear",
+      "其他 IP 工具": "Other IP Tools",
+      "搜索工具：CIDR、IPv6、掩码": "Search tools: CIDR, IPv6, mask",
+      "提示：CIDR 聚合会先规范化网络段，再尽可能合并连续地址块。": "Tip: CIDR aggregation normalizes networks first, then merges adjacent blocks where possible.",
+      "IP 工具大全": "IP Tools Directory",
+      "集中提供 IPv4、IPv6、CIDR、子网掩码、地址范围、反向 DNS、NAT64 和批量计算工具。": "A collection of IPv4, IPv6, CIDR, netmask, range, reverse DNS, NAT64, and bulk calculation tools.",
+      "选择一个工具": "Choose a Tool",
+      "所有计算均在浏览器本地完成，不上传输入内容。": "All calculations run locally in your browser. Inputs are not uploaded.",
+      "可以使用上方搜索框按 CIDR、IPv6、掩码、DNS 等关键词筛选工具。": "Use the search box above to filter by keywords such as CIDR, IPv6, mask, or DNS.",
+      "没有匹配的工具": "No matching tools",
+      "复制": "Copy",
+      "复制全部": "Copy All",
+      "复制结果": "Copy Result",
+      "已复制": "Copied",
+      "结果": "Result",
+      "IPv4 工具": "IPv4 Tools",
+      "IPv6 工具": "IPv6 Tools",
+      "CIDR / 子网工具": "CIDR / Subnet Tools",
+      "转换 / 验证工具": "Conversion / Validation Tools",
+      "IPv4 地址表示转换器": "IPv4 Address Representation Converter",
+      "把 IPv4 地址转换为十进制整数、十六进制、二进制、八进制和反向 DNS 表示。": "Convert an IPv4 address to decimal integer, hexadecimal, binary, octal, and reverse DNS formats.",
+      "输入一个 IPv4 地址，查看常见表示方法。": "Enter an IPv4 address to see common representations.",
+      "十进制整数常用于数据库存储；in-addr.arpa 常用于 PTR 反向解析。": "Decimal integers are often used for database storage; in-addr.arpa is used for PTR reverse DNS.",
+      "IPv4 地址": "IPv4 Address",
+      "例如 192.168.1.10": "e.g. 192.168.1.10",
+      "IPv6 NAT64 地址转换器": "IPv6 NAT64 Address Converter",
+      "根据 NAT64 前缀和 IPv4 地址生成 IPv6 NAT64 地址，也可从标准 /96 NAT64 地址中提取 IPv4。": "Generate an IPv6 NAT64 address from a NAT64 prefix and IPv4 address, or extract IPv4 from a standard /96 NAT64 address.",
+      "输入 IPv4 与 NAT64 前缀，或输入已有 NAT64 IPv6 地址。": "Enter an IPv4 address and NAT64 prefix, or enter an existing NAT64 IPv6 address.",
+      "默认前缀 64:ff9b::/96 是 RFC 6052 定义的 Well-Known Prefix。": "The default prefix 64:ff9b::/96 is the Well-Known Prefix defined by RFC 6052.",
+      "NAT64 前缀": "NAT64 Prefix",
+      "NAT64 IPv6 地址（可选，用于反解）": "NAT64 IPv6 Address (optional, for reverse extraction)",
+      "IPv4 范围转 CIDR": "IPv4 Range to CIDR",
+      "把起止 IPv4 地址范围拆分为最少数量的 CIDR 网段。": "Split a start/end IPv4 range into the smallest set of CIDR blocks.",
+      "输入起始和结束 IPv4 地址。": "Enter start and end IPv4 addresses.",
+      "生成结果适合路由表、访问控制列表和防火墙规则。": "The output is suitable for routing tables, ACLs, and firewall rules.",
+      "起始 IPv4": "Start IPv4",
+      "结束 IPv4": "End IPv4",
+      "CIDR 聚合器": "CIDR Aggregator",
+      "合并重叠或连续的 IPv4 CIDR，输出更短的等价网段列表。": "Merge overlapping or adjacent IPv4 CIDR blocks into a shorter equivalent list.",
+      "每行输入一个 IPv4 CIDR。": "Enter one IPv4 CIDR per line.",
+      "当前聚合器支持 IPv4 CIDR；IPv6 范围转换请使用 IPv6 Range to CIDR。": "This aggregator supports IPv4 CIDR; use IPv6 Range to CIDR for IPv6 range conversion.",
+      "CIDR 列表": "CIDR List",
+      "IPv4 CIDR 与子网掩码转换": "IPv4 CIDR and Netmask Converter",
+      "把 IPv4 CIDR 前缀长度转换为子网掩码、通配符掩码、主机数和地址范围。": "Convert an IPv4 CIDR prefix to netmask, wildcard mask, host counts, and address range.",
+      "输入 CIDR，例如 192.168.1.0/24 或 /27。": "Enter CIDR, such as 192.168.1.0/24 or /27.",
+      "/31 常用于点到点链路，/32 表示单个主机地址。": "/31 is commonly used for point-to-point links; /32 represents a single host address.",
+      "IPv4 CIDR 或前缀": "IPv4 CIDR or Prefix",
+      "IPv6 范围转 CIDR": "IPv6 Range to CIDR",
+      "把起止 IPv6 地址范围拆分为最少数量的 IPv6 CIDR 网段。": "Split a start/end IPv6 range into the smallest set of IPv6 CIDR blocks.",
+      "输入起始和结束 IPv6 地址，支持 :: 压缩写法。": "Enter start and end IPv6 addresses. :: compression is supported.",
+      "IPv6 计算使用 BigInt 在浏览器本地完成。": "IPv6 calculations use BigInt and run locally in the browser.",
+      "起始 IPv6": "Start IPv6",
+      "结束 IPv6": "End IPv6",
+      "IPv4 通配符掩码计算器": "IPv4 Wildcard Mask Calculator",
+      "在子网掩码、CIDR 前缀和 ACL 通配符掩码之间互相转换。": "Convert between netmask, CIDR prefix, and ACL wildcard mask.",
+      "输入 CIDR 或子网掩码。": "Enter CIDR or netmask.",
+      "Cisco ACL 中的 wildcard mask 是子网掩码逐位取反，例如 /24 对应 0.0.0.255。": "In Cisco ACLs, a wildcard mask is the bitwise inverse of the netmask, for example /24 maps to 0.0.0.255.",
+      "CIDR、前缀或子网掩码": "CIDR, Prefix, or Netmask",
+      "IPv4 子网计算器": "IPv4 Subnet Calculator",
+      "根据 IPv4 地址和 CIDR 前缀计算网络地址、广播地址、主机范围、子网掩码和通配符掩码。": "Calculate network address, broadcast address, host range, netmask, and wildcard mask from IPv4 and CIDR prefix.",
+      "输入一个 IPv4 CIDR，例如 192.168.10.34/27。": "Enter an IPv4 CIDR, such as 192.168.10.34/27.",
+      "如果输入的是主机地址，结果会自动归一化到所在子网。": "If you enter a host address, results are normalized to its subnet.",
+      "IPv6 子网计算器": "IPv6 Subnet Calculator",
+      "根据 IPv6 地址和前缀长度计算网络地址、范围末尾地址、地址数量和可再划分子网数量。": "Calculate network address, range end, address count, and further subnet count from IPv6 and prefix length.",
+      "输入 IPv6 CIDR，并可选填写目标子网前缀。": "Enter an IPv6 CIDR and optionally a target subnet prefix.",
+      "IPv6 没有广播地址；范围末尾地址只是该前缀内的最后一个地址。": "IPv6 has no broadcast address; the range end is simply the last address in the prefix.",
+      "目标子网前缀（可选）": "Target Subnet Prefix (optional)",
+      "网络和 IP 地址计算器": "Network and IP Address Calculator",
+      "输入 IPv4 地址和网络掩码位，计算可用 IP 数、子网掩码、网络地址、首末可用地址和广播地址。": "Enter an IPv4 address and mask bits to calculate usable IP count, netmask, network address, first/last usable address, and broadcast address.",
+      "输入完整 IPv4 地址和掩码位。掩码位格式也称为 CIDR 格式（CIDR = 无类别域间路由选择）。": "Enter a full IPv4 address and mask bits. Mask bits are also known as CIDR notation.",
+      "下方同时提供子网掩码转换器，把位格式转换为点分十进制和十六进制格式。": "The output also converts mask bits into dotted decimal and hexadecimal formats.",
+      "IP 地址": "IP Address",
+      "掩码位（CIDR，默认 24）": "Mask Bits (CIDR, default 24)",
+      "IPv6 展开 / 压缩工具": "IPv6 Expand / Compress Tool",
+      "把 IPv6 地址转换为完整展开格式和 RFC 5952 风格的压缩格式。": "Convert an IPv6 address to full expanded form and RFC 5952-style compressed form.",
+      "输入一个 IPv6 地址，支持 :: 压缩写法和 IPv4 映射写法。": "Enter an IPv6 address. :: compression and IPv4-mapped notation are supported.",
+      "展开格式包含 8 个 16 位分组；压缩格式会压缩最长的连续 0 分组并使用小写十六进制。": "Expanded form contains eight 16-bit groups; compressed form shortens the longest zero run and uses lowercase hex.",
+      "IPv6 地址": "IPv6 Address",
+      "按前缀长度计算地址数量": "Address Count by Prefix Length",
+      "根据 IPv4 或 IPv6 的 CIDR 前缀长度计算该网段包含的地址数量。": "Calculate how many addresses an IPv4 or IPv6 network contains from its CIDR prefix length.",
+      "选择 IP 版本并输入前缀长度，例如 IPv4 /24 或 IPv6 /64。": "Select IP version and enter a prefix length, such as IPv4 /24 or IPv6 /64.",
+      "IPv4 同时显示传统可用主机数量；IPv6 通常不扣除网络和广播地址。": "For IPv4, traditional usable host count is also shown; IPv6 typically does not subtract network and broadcast addresses.",
+      "IP 版本": "IP Version",
+      "前缀长度": "Prefix Length",
+      "CIDR 转 IP 范围": "CIDR to IP Range",
+      "把 IPv4 CIDR 转换为网络地址、广播地址、首末可用地址和地址数量。": "Convert an IPv4 CIDR to network address, broadcast address, first/last usable addresses, and address count.",
+      "输入 IPv4 CIDR，例如 192.168.0.0/24。": "Enter an IPv4 CIDR, such as 192.168.0.0/24.",
+      "适合快速确认某个路由或 ACL 网段覆盖的地址范围。": "Useful for quickly checking the range covered by a route or ACL block.",
+      "子网掩码转 CIDR": "Netmask to CIDR",
+      "把点分十进制子网掩码转换为 CIDR 前缀、通配符掩码和地址数量。": "Convert a dotted-decimal netmask to CIDR prefix, wildcard mask, and address count.",
+      "输入 IPv4 子网掩码，例如 255.255.255.0。": "Enter an IPv4 netmask, such as 255.255.255.0.",
+      "子网掩码必须是连续的 1 后跟连续的 0。": "A netmask must contain contiguous 1 bits followed by contiguous 0 bits.",
+      "子网掩码": "Netmask",
+      "IPv6 CIDR 转范围": "IPv6 CIDR to Range",
+      "把 IPv6 CIDR 转换为网络地址、范围末尾地址和地址数量。": "Convert IPv6 CIDR to network address, range end, and address count.",
+      "输入 IPv6 CIDR，例如 2001:db8::/64。": "Enter an IPv6 CIDR, such as 2001:db8::/64.",
+      "IPv6 没有广播地址；末尾地址只是该前缀范围内最后一个地址。": "IPv6 has no broadcast address; the end address is simply the last address in the prefix range.",
+      "IP 地址类型判断": "IP Address Type Checker",
+      "判断 IPv4 或 IPv6 地址是公网、私网、回环、链路本地、多播、保留、文档示例或 CGNAT。": "Check whether an IPv4 or IPv6 address is public, private, loopback, link-local, multicast, reserved, documentation, or CGNAT.",
+      "输入任意 IPv4 或 IPv6 地址。": "Enter any IPv4 or IPv6 address.",
+      "类型判断基于常见 IANA/RFC 地址范围，适合排查地址是否可公网路由。": "Type detection is based on common IANA/RFC ranges and helps check whether an address is publicly routable.",
+      "IPv4 / IPv6 验证器": "IPv4 / IPv6 Validator",
+      "验证输入是否为合法 IPv4 或 IPv6 地址，并输出规范化格式和版本。": "Validate whether input is a legal IPv4 or IPv6 address and output normalized form and version.",
+      "输入一个 IP 地址。": "Enter an IP address.",
+      "如果地址不合法，会显示具体错误原因。": "If the address is invalid, the specific reason is shown.",
+      "反向 DNS 名称生成器": "Reverse DNS Name Generator",
+      "为 IPv4 生成 in-addr.arpa，为 IPv6 生成 ip6.arpa 反向解析名称。": "Generate in-addr.arpa reverse names for IPv4 and ip6.arpa names for IPv6.",
+      "输入 IPv4 或 IPv6 地址。": "Enter an IPv4 or IPv6 address.",
+      "IPv6 反向 DNS 使用完整展开地址的每个十六进制半字节反转。": "IPv6 reverse DNS reverses every hexadecimal nibble of the fully expanded address.",
+      "子网拆分器": "Subnet Splitter",
+      "把 IPv4 或 IPv6 CIDR 拆分为更小的目标前缀子网。": "Split an IPv4 or IPv6 CIDR into smaller subnets at the target prefix.",
+      "输入父级 CIDR 和目标前缀。为避免页面过长，最多显示前 256 个子网。": "Enter a parent CIDR and target prefix. To keep the page manageable, only the first 256 subnets are shown.",
+      "目标前缀必须大于或等于父级前缀。": "The target prefix must be greater than or equal to the parent prefix.",
+      "父级 CIDR": "Parent CIDR",
+      "目标前缀": "Target Prefix",
+      "IP 地址批量计算": "Bulk IP Address Calculator",
+      "批量计算多行 IPv4 CIDR 的网络地址、广播地址、首末可用地址和地址数量。": "Calculate network address, broadcast address, first/last usable addresses, and address count for multiple IPv4 CIDR lines.",
+      "适合批量整理路由表、ACL 或网络规划清单。": "Useful for batch organizing routing tables, ACLs, or network planning lists.",
+      "IPv4 CIDR 列表": "IPv4 CIDR List"
+    };
+    Object.assign(translations, {
+      "标准点分十进制": "Standard dotted decimal",
+      "十进制整数": "Decimal integer",
+      "十六进制": "Hexadecimal",
+      "二进制": "Binary",
+      "八进制": "Octal",
+      "反向 DNS": "Reverse DNS",
+      "生成的 NAT64 IPv6": "Generated NAT64 IPv6",
+      "从 IPv6 提取 IPv4": "Extracted IPv4 from IPv6",
+      "网络地址": "Network Address",
+      "广播地址": "Broadcast Address",
+      "通配符掩码": "Wildcard Mask",
+      "地址总数": "Total Addresses",
+      "可用主机数": "Usable Hosts",
+      "输入地址": "Input Address",
+      "第一个可用地址": "First Usable Address",
+      "最后一个可用地址": "Last Usable Address",
+      "范围末尾地址": "Range End Address",
+      "地址数量": "Address Count",
+      "可划分子网数量": "Available Subnet Count",
+      "每个子网地址数": "Addresses per Subnet",
+      "输入 IP": "Input IP",
+      "掩码位 / CIDR": "Mask Bits / CIDR",
+      "可用 IP": "Usable IPs",
+      "掩码": "Mask",
+      "网络": "Network",
+      "第一可用": "First Usable",
+      "最后可用": "Last Usable",
+      "广播": "Broadcast",
+      "子网掩码转换器 - 位": "Netmask Converter - Bits",
+      "Dec 十进制": "Decimal",
+      "Hex 十六进制": "Hexadecimal",
+      "压缩格式": "Compressed Format",
+      "完整展开格式": "Fully Expanded Format",
+      "十六进制分组": "Hex Groups",
+      "主机位数": "Host Bits",
+      "2 的幂表示": "Power of 2",
+      "IPv4 可用主机数": "IPv4 Usable Hosts",
+      "IPv4 子网掩码": "IPv4 Netmask",
+      "是否合法": "Valid",
+      "是": "Yes",
+      "否": "No",
+      "规范化地址": "Normalized Address",
+      "地址类型": "Address Type",
+      "展开格式": "Expanded Format",
+      "错误原因": "Error Reason",
+      "类型": "Type",
+      "是否通常可公网路由": "Usually Publicly Routable",
+      "私网地址": "Private address",
+      "CGNAT 地址": "CGNAT address",
+      "回环地址": "Loopback address",
+      "链路本地地址": "Link-local address",
+      "多播地址": "Multicast address",
+      "保留地址": "Reserved address",
+      "文档示例地址": "Documentation address",
+      "公网单播地址": "Public unicast address",
+      "唯一本地地址 ULA": "Unique local address (ULA)",
+      "未指定地址": "Unspecified address",
+      "公网单播地址或特殊全局地址": "Public unicast or special global address",
+      "IPv4 地址格式不正确": "Invalid IPv4 address format",
+      "IPv4 地址只能包含 0-255 的数字段": "IPv4 address can only contain numeric octets from 0 to 255",
+      "IPv4 地址段必须在 0-255 之间": "IPv4 octets must be between 0 and 255",
+      "IPv4 前缀长度必须是 0-32": "IPv4 prefix length must be 0-32",
+      "掩码位必须是 0-32": "Mask bits must be 0-32",
+      "IP 版本请输入 IPv4 或 IPv6": "IP version must be IPv4 or IPv6",
+      "前缀长度必须是 0-": "Prefix length must be 0-",
+      "请输入类似 192.168.1.0/24 或 /24 的 CIDR": "Enter a CIDR such as 192.168.1.0/24 or /24",
+      "子网掩码必须是连续的 1 后跟连续的 0": "Netmask must contain contiguous 1 bits followed by contiguous 0 bits",
+      "起始地址不能大于结束地址": "Start address cannot be greater than end address",
+      "请输入至少一个 CIDR": "Enter at least one CIDR",
+      "IPv6 地址不能为空": "IPv6 address cannot be empty",
+      "IPv6 地址格式不正确": "Invalid IPv6 address format",
+      "IPv6 地址必须包含 8 个 16 位分组": "IPv6 address must contain eight 16-bit groups",
+      "IPv6 分组格式不正确": "Invalid IPv6 group format",
+      "请输入类似 2001:db8::1/64 的 IPv6 CIDR": "Enter an IPv6 CIDR such as 2001:db8::1/64",
+      "IPv6 前缀长度必须是 0-128": "IPv6 prefix length must be 0-128",
+      "当前页面支持最常见的 /96 NAT64 前缀": "This page supports the common /96 NAT64 prefix",
+      "请至少输入 IPv4 地址或 NAT64 IPv6 地址": "Enter at least an IPv4 address or NAT64 IPv6 address",
+      "目标子网前缀必须在当前前缀到 128 之间": "Target subnet prefix must be between the current prefix and 128",
+      "目标 IPv6 前缀必须在父级前缀到 128 之间": "Target IPv6 prefix must be between the parent prefix and 128",
+      "目标 IPv4 前缀必须在父级前缀到 32 之间": "Target IPv4 prefix must be between the parent prefix and 32",
+      "请输入至少一个 IPv4 CIDR": "Enter at least one IPv4 CIDR"
+    });
+    let calcTimer = null;
+    let currentLang = localStorage.getItem("lang") === "en" ? "en" : "zh";
+
+    function tr(text) {
+      if (currentLang === "zh") return text;
+      if (translations[text]) return translations[text];
+      if (String(text).startsWith("例如 ")) return "e.g. " + String(text).slice(3).replace(/、/g, ", ");
+      const maxBitsPrefix = "前缀长度必须是 0-";
+      if (String(text).startsWith(maxBitsPrefix)) return translations[maxBitsPrefix] + String(text).slice(maxBitsPrefix.length);
+      return text;
+    }
+
+    function localizeTextNodes() {
+      document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
+      document.title = tr(isHome ? "IP 工具大全" : page.title) + " - " + tr("IP 网络工具");
+      document.querySelector(".brand strong").textContent = tr("IP 网络工具");
+      document.querySelector(".brand span span").textContent = tr("在线 IP、CIDR 与掩码计算");
+      $("menuToggleBtn").textContent = tr("菜单");
+      const navLinks = document.querySelectorAll("#topNav a");
+      ["NetScope", "IP 查询", "NAT 检测", "带宽计算器", "屏幕检测"].forEach((label, index) => {
+        if (navLinks[index]) navLinks[index].textContent = tr(label);
+      });
+      const langBtn = $("langBtn");
+      if (langBtn) langBtn.textContent = currentLang === "zh" ? "EN" : "中文";
+      document.querySelector(".hero-card strong").textContent = tr("本地计算");
+      document.querySelector(".hero-card p").textContent = tr("IPv4、IPv6、CIDR、NAT64 和通配符掩码转换都在当前页面完成，适合网络规划、ACL 配置和故障排查。");
+      $("calcBtn").textContent = tr("计算");
+      $("sampleBtn").textContent = tr("填入示例");
+      $("clearBtn").textContent = tr("清空");
+      document.querySelector("aside.card h3").textContent = tr("其他 IP 工具");
+      $("toolSearch").placeholder = tr("搜索工具：CIDR、IPv6、掩码");
+    }
+
+    function init() {
+      if (window.AppMobileNav && window.AppMobileNav.init) {
+        window.AppMobileNav.init({
+          toggleId: "menuToggleBtn",
+          menuId: "topNav",
+          mediaQuery: "(max-width: 860px)",
+          openClass: "is-open",
+          linkSelector: "a"
+        });
+      }
+      const langBtn = $("langBtn");
+      if (langBtn) {
+        langBtn.addEventListener("click", () => {
+          const oldValues = isHome ? null : rawValues();
+          currentLang = currentLang === "zh" ? "en" : "zh";
+          localStorage.setItem("lang", currentLang);
+          renderPage();
+          if (oldValues) setValues(oldValues);
+          calculateIfReady();
+        });
+      }
+      $("canonicalLink").href = "https://www.ip.network" + location.pathname;
+      renderPage();
+      $("toolSearch").addEventListener("input", renderToolList);
+      if (!isHome) {
+        $("calcBtn").addEventListener("click", calculate);
+        $("sampleBtn").addEventListener("click", sample);
+        $("clearBtn").addEventListener("click", clearForm);
+        $("formFields").addEventListener("input", scheduleCalculate);
+        $("formFields").addEventListener("change", scheduleCalculate);
+        sample();
+      }
+    }
+
+    function renderPage() {
+      localizeTextNodes();
+      renderToolList();
+      if (isHome) {
+        renderHome();
+        return;
+      }
+      $("toolTitle").textContent = tr(page.title);
+      $("toolKicker").textContent = tr(page.group || "网络工具");
+      $("toolDesc").textContent = tr(page.desc);
+      $("formTitle").textContent = tr(page.title);
+      $("formDesc").textContent = tr(page.form);
+      $("toolNote").textContent = tr(page.note);
+      $("formFields").innerHTML = page.fields.map(fieldHTML).join("");
+    }
+
+    function fieldHTML(field) {
+      const id = validFieldId(field.id);
+      const escapedId = escapeHTML(id);
+      const attrs = [`id="${escapedId}"`, `placeholder="${escapeHTML(tr(field.placeholder || ""))}"`];
+      if (field.min !== undefined) attrs.push(`min="${escapeHTML(field.min)}"`);
+      if (field.max !== undefined) attrs.push(`max="${escapeHTML(field.max)}"`);
+      const common = attrs.join(" ");
+      let control = `<input type="${escapeHTML(field.type || "text")}" ${common} />`;
+      if (field.type === "textarea") control = `<textarea ${common}></textarea>`;
+      if (field.type === "select") control = `<select id="${escapedId}">${field.options.map(option => `<option value="${escapeHTML(option)}">${escapeHTML(tr(option))}</option>`).join("")}</select>`;
+      return `<div class="field"><label for="${escapedId}">${escapeHTML(tr(field.label))}</label>${control}</div>`;
+    }
+
+    function values() {
+      return Object.fromEntries(page.fields.map(f => [f.id, $(f.id).value.trim()]));
+    }
+
+    function rawValues() {
+      return Object.fromEntries(page.fields.map(f => [f.id, $(f.id).value]));
+    }
+
+    function setValues(nextValues) {
+      for (const field of page.fields) if ($(field.id)) $(field.id).value = nextValues[field.id] || "";
+    }
+
+    function sample() {
+      for (const field of page.fields) $(field.id).value = page.sample[field.id] || "";
+      calculate();
+    }
+
+    function clearForm() {
+      for (const field of page.fields) $(field.id).value = "";
+      $("result").innerHTML = "";
+    }
+
+    function calculate() {
+      try {
+        $("result").innerHTML = page.run(values());
+      } catch (err) {
+        $("result").innerHTML = `<div class="item error">${escapeHTML(tr(err.message || String(err)))}</div>`;
+      }
+    }
+
+    function calculateIfReady() {
+      if (isHome) return;
+      if (!page.fields.every(field => $(field.id))) return;
+      calculate();
+    }
+
+    function scheduleCalculate() {
+      clearTimeout(calcTimer);
+      calcTimer = setTimeout(calculate, 180);
+    }
+
+    function renderHome() {
+      document.querySelector(".actions").style.display = "none";
+      $("toolTitle").textContent = tr("IP 工具大全");
+      $("toolKicker").textContent = tr("工具索引");
+      $("toolDesc").textContent = tr("集中提供 IPv4、IPv6、CIDR、子网掩码、地址范围、反向 DNS、NAT64 和批量计算工具。");
+      $("formTitle").textContent = tr("选择一个工具");
+      $("formDesc").textContent = tr("所有计算均在浏览器本地完成，不上传输入内容。");
+      $("formFields").innerHTML = `<div class="home-grid">${Object.entries(pages).map(([key, item]) => `<a class="home-card" href="/tools/${key}"><strong>${escapeHTML(tr(item.title))}</strong><span>${escapeHTML(tr(item.desc))}</span></a>`).join("")}</div>`;
+      $("result").innerHTML = "";
+      $("toolNote").textContent = tr("可以使用上方搜索框按 CIDR、IPv6、掩码、DNS 等关键词筛选工具。");
+    }
+
+    function renderToolList() {
+      const keyword = ($("toolSearch") ? $("toolSearch").value : "").trim().toLowerCase();
+      const groups = {};
+      for (const [key, item] of Object.entries(pages)) {
+        const haystack = `${item.title} ${item.kicker} ${item.desc} ${key}`.toLowerCase();
+        if (keyword && !haystack.includes(keyword)) continue;
+        const group = item.group || "其他工具";
+        if (!groups[group]) groups[group] = [];
+        groups[group].push([key, item]);
+      }
+      $("toolList").innerHTML = Object.entries(groups).map(([group, items]) => `<div class="tool-group"><div class="tool-group-title">${escapeHTML(tr(group))}</div>${items.map(([key, item]) => `<a class="${key === slug ? "active" : ""}" href="/tools/${key}">${escapeHTML(tr(item.title))}</a>`).join("")}</div>`).join("") || `<div class="note">${tr("没有匹配的工具")}</div>`;
+    }
+
+    function rows(items) {
+      return `<div class="result-table">${items.map(([k, v]) => `<div class="result-row"><div class="result-key">${escapeHTML(tr(k))}</div><div class="result-value">${escapeHTML(tr(v))}</div><button class="copy-btn" type="button" data-copy="${escapeHTML(v)}">${tr("复制")}</button></div>`).join("")}</div><button class="copy-btn" type="button" data-copy="${escapeHTML(items.map(([k, v]) => `${tr(k)}: ${tr(v)}`).join("\n"))}">${tr("复制全部")}</button>`;
+    }
+
+    function pre(text) {
+      const displayText = trBlock(text);
+      return `<div class="item"><span>${tr("结果")}</span><pre>${escapeHTML(displayText)}</pre><button class="copy-btn" type="button" data-copy="${escapeHTML(displayText)}">${tr("复制结果")}</button></div>`;
+    }
+
+    function trBlock(text) {
+      if (currentLang === "zh") return text;
+      return String(text).replace(/网络:/g, "Network:").replace(/广播:/g, "Broadcast:").replace(/第一可用:/g, "First Usable:").replace(/最后可用:/g, "Last Usable:").replace(/地址总数:/g, "Total Addresses:").replace(/\.\.\. 共 ([\d,]+) 个子网，仅显示前 256 个/g, "... $1 subnets total, showing only the first 256");
+    }
+
+    document.addEventListener("click", event => {
+      const button = event.target.closest("[data-copy]");
+      if (!button) return;
+      navigator.clipboard.writeText(button.dataset.copy || "").then(() => {
+        const old = button.textContent;
+        button.textContent = tr("已复制");
+        setTimeout(() => { button.textContent = old; }, 900);
+      }).catch(() => {});
+    });
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+    }
+
+    function validFieldId(value) {
+      const id = String(value || "");
+      if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(id)) throw new Error("Invalid field id");
+      return id;
+    }
+
+    function ipv4ToInt(ip) {
+      const parts = String(ip).trim().split(".");
+      if (parts.length !== 4) throw new Error("IPv4 地址格式不正确");
+      return parts.reduce((acc, part) => {
+        if (!/^\d+$/.test(part)) throw new Error("IPv4 地址只能包含 0-255 的数字段");
+        const n = Number(part);
+        if (n < 0 || n > 255) throw new Error("IPv4 地址段必须在 0-255 之间");
+        return ((acc << 8) | n) >>> 0;
+      }, 0) >>> 0;
+    }
+
+    function intToIPv4(n) { return intToIPv4Parts(n).join("."); }
+    function intToIPv4Parts(n) { return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]; }
+
+    function prefixMask(prefix) {
+      prefix = Number(prefix);
+      if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error("IPv4 前缀长度必须是 0-32");
+      return prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    }
+
+    function parseIPv4Prefix(value) {
+      const prefix = Number(String(value).trim().replace(/^\//, ""));
+      if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error("掩码位必须是 0-32");
+      return prefix;
+    }
+
+    function parseIPVersion(value) {
+      const raw = String(value).trim().toLowerCase();
+      if (raw === "4" || raw === "ipv4") return 4;
+      if (raw === "6" || raw === "ipv6") return 6;
+      throw new Error("IP 版本请输入 IPv4 或 IPv6");
+    }
+
+    function parsePrefixForVersion(value, maxBits) {
+      const prefix = Number(String(value).trim().replace(/^\//, ""));
+      if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxBits) throw new Error("前缀长度必须是 0-" + maxBits);
+      return prefix;
+    }
+
+    function parseIPv4CIDR(input) {
+      const raw = String(input).trim();
+      const match = raw.match(/^(?:(\d+\.\d+\.\d+\.\d+)\s*)?\/?(\d{1,2})$/) || raw.match(/^(\d+\.\d+\.\d+\.\d+)\/(\d{1,2})$/);
+      if (!match) throw new Error("请输入类似 192.168.1.0/24 或 /24 的 CIDR");
+      const ipText = match[1] || "0.0.0.0";
+      const prefix = Number(match[2]);
+      if (!Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error("IPv4 前缀长度必须是 0-32");
+      return { ip: ipv4ToInt(ipText), prefix };
+    }
+
+    function parseMaskInput(input) {
+      const raw = String(input).trim();
+      if (raw.includes("/") || raw.startsWith("/")) return parseIPv4CIDR(raw);
+      if (/^\d{1,2}$/.test(raw)) return { ip: null, prefix: Number(raw) };
+      const mask = ipv4ToInt(raw);
+      const inv = (~mask) >>> 0;
+      if (((inv + 1) & inv) !== 0) throw new Error("子网掩码必须是连续的 1 后跟连续的 0");
+      return { ip: null, prefix: mask === 0 ? 0 : 32 - Math.log2(inv + 1) };
+    }
+
+    function ipv4RangeToCIDR(start, end) {
+      if (start > end) throw new Error("起始地址不能大于结束地址");
+      const result = [];
+      let current = start >>> 0;
+      while (current <= end) {
+        const remaining = end - current + 1;
+        const maxByAlign = current === 0 ? 2 ** 32 : (current & -current) >>> 0;
+        let block = Math.min(maxByAlign || 2 ** 32, 2 ** Math.floor(Math.log2(remaining)));
+        const prefix = 32 - Math.log2(block);
+        result.push(intToIPv4(current) + "/" + prefix);
+        current += block;
+        if (current > 0xFFFFFFFF) break;
+      }
+      return result;
+    }
+
+    function parseCIDR(cidr) {
+      const parsed = parseIPv4CIDR(cidr);
+      const mask = prefixMask(parsed.prefix);
+      const start = (parsed.ip & mask) >>> 0;
+      const end = (start | ((~mask) >>> 0)) >>> 0;
+      return { start, end, prefix: parsed.prefix };
+    }
+
+    function ipv4RangeRows(range) {
+      const total = range.end - range.start + 1;
+      const usable = range.prefix >= 31 ? total : Math.max(0, total - 2);
+      const first = range.prefix >= 31 ? range.start : range.start + 1;
+      const last = range.prefix >= 31 ? range.end : range.end - 1;
+      return rows([
+        ["CIDR", intToIPv4(range.start) + "/" + range.prefix],
+        ["网络地址", intToIPv4(range.start)],
+        ["广播地址", intToIPv4(range.end)],
+        ["第一可用", intToIPv4(first)],
+        ["最后可用", intToIPv4(last)],
+        ["地址总数", String(total)],
+        ["可用主机数", String(usable)]
+      ]);
+    }
+
+    function aggregateCIDRs(text) {
+      let ranges = String(text).split(/\r?\n/).map(x => x.trim()).filter(Boolean).map(parseCIDR).sort((a, b) => a.start - b.start || a.end - b.end);
+      if (!ranges.length) throw new Error("请输入至少一个 CIDR");
+      const merged = [];
+      for (const range of ranges) {
+        const last = merged[merged.length - 1];
+        if (last && range.start <= last.end + 1) last.end = Math.max(last.end, range.end);
+        else merged.push({ ...range });
+      }
+      return merged.flatMap(range => ipv4RangeToCIDR(range.start, range.end));
+    }
+
+    function parseIPv6(input) {
+      let text = String(input).trim().toLowerCase();
+      if (!text) throw new Error("IPv6 地址不能为空");
+      if (text.includes(".")) {
+        const lastColon = text.lastIndexOf(":");
+        const v4 = ipv4ToInt(text.slice(lastColon + 1));
+        text = text.slice(0, lastColon) + ":" + ((v4 >>> 16) & 0xffff).toString(16) + ":" + (v4 & 0xffff).toString(16);
+      }
+      const sides = text.split("::");
+      if (sides.length > 2) throw new Error("IPv6 地址格式不正确");
+      const left = sides[0] ? sides[0].split(":") : [];
+      const right = sides[1] ? sides[1].split(":") : [];
+      const fill = sides.length === 2 ? new Array(8 - left.length - right.length).fill("0") : [];
+      const parts = [...left, ...fill, ...right];
+      if (parts.length !== 8) throw new Error("IPv6 地址必须包含 8 个 16 位分组");
+      return parts.reduce((acc, part) => {
+        if (!/^[0-9a-f]{1,4}$/.test(part)) throw new Error("IPv6 分组格式不正确");
+        return (acc << 16n) + BigInt(parseInt(part, 16));
+      }, 0n);
+    }
+
+    function parseIPv6CIDR(input) {
+      const parts = String(input).trim().split("/");
+      if (parts.length !== 2) throw new Error("请输入类似 2001:db8::1/64 的 IPv6 CIDR");
+      const prefix = Number(parts[1]);
+      if (!Number.isInteger(prefix) || prefix < 0 || prefix > 128) throw new Error("IPv6 前缀长度必须是 0-128");
+      return { ip: parseIPv6(parts[0]), prefix };
+    }
+
+    function ipv6CIDRRange(parsed) {
+      const mask = ipv6PrefixMask(parsed.prefix);
+      const start = parsed.ip & mask;
+      const end = start | (((1n << 128n) - 1n) ^ mask);
+      return { start, end, total: 1n << BigInt(128 - parsed.prefix) };
+    }
+
+    function ipv6PrefixMask(prefix) {
+      if (prefix === 0) return 0n;
+      return (((1n << 128n) - 1n) << BigInt(128 - prefix)) & ((1n << 128n) - 1n);
+    }
+
+    function formatBigInt(value) {
+      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function formatIPv6(value) {
+      const parts = ipv6Parts(value);
+      let bestStart = -1, bestLen = 0;
+      for (let i = 0; i < 8; ) {
+        if (parts[i] !== "0") { i++; continue; }
+        let j = i;
+        while (j < 8 && parts[j] === "0") j++;
+        if (j - i > bestLen) { bestStart = i; bestLen = j - i; }
+        i = j;
+      }
+      if (bestLen < 2) return parts.join(":");
+      const before = parts.slice(0, bestStart).join(":");
+      const after = parts.slice(bestStart + bestLen).join(":");
+      return before + "::" + after || "::";
+    }
+
+    function ipv6Parts(value) {
+      const parts = [];
+      for (let i = 7; i >= 0; i--) parts.push(Number((value >> BigInt(i * 16)) & 0xffffn).toString(16));
+      return parts;
+    }
+
+    function ipv6RangeToCIDR(start, end) {
+      if (start > end) throw new Error("起始地址不能大于结束地址");
+      const result = [];
+      let current = start;
+      while (current <= end) {
+        const remaining = end - current + 1n;
+        const align = current === 0n ? (1n << 128n) : current & -current;
+        let block = align;
+        while (block > remaining) block >>= 1n;
+        const prefix = 128 - bitLength(block - 1n);
+        result.push(formatIPv6(current) + "/" + prefix);
+        current += block;
+      }
+      return result;
+    }
+
+    function bitLength(n) {
+      let len = 0;
+      while (n > 0n) { n >>= 1n; len++; }
+      return len;
+    }
+
+    function makeNat64(prefixText, ipv4Text) {
+      const prefix = String(prefixText).trim().split("/");
+      const len = Number(prefix[1] || 96);
+      if (len !== 96) throw new Error("当前页面支持最常见的 /96 NAT64 前缀");
+      const base = parseIPv6(prefix[0] || "64:ff9b::");
+      return formatIPv6((base & (((1n << 128n) - 1n) ^ ((1n << 32n) - 1n))) + BigInt(ipv4ToInt(ipv4Text)));
+    }
+
+    function extractNat64IPv4(ipv6Text) {
+      const value = parseIPv6(ipv6Text);
+      return intToIPv4(Number(value & 0xffffffffn));
+    }
+
+    function validateIPRows(input) {
+      try {
+        const n = ipv4ToInt(input);
+        return [["是否合法", "是"], ["IP 版本", "IPv4"], ["规范化地址", intToIPv4(n)], ["地址类型", ipAddressTypeRows(input).map(x => x[1]).join(currentLang === "zh" ? "；" : "; ")]];
+      } catch (v4Err) {
+        try {
+          const n = parseIPv6(input);
+          return [["是否合法", "是"], ["IP 版本", "IPv6"], ["压缩格式", formatIPv6(n)], ["展开格式", ipv6Parts(n).map(x => x.padStart(4, "0")).join(":")], ["地址类型", ipAddressTypeRows(input).map(x => x[1]).join(currentLang === "zh" ? "；" : "; ")]];
+        } catch (v6Err) {
+          return [["是否合法", "否"], ["错误原因", tr(v4Err.message) + (currentLang === "zh" ? "；" : "; ") + tr(v6Err.message)]];
+        }
+      }
+    }
+
+    function ipAddressTypeRows(input) {
+      try {
+        const ip = ipv4ToInt(input);
+        const types = [];
+        if (inIPv4CIDR(ip, "10.0.0.0", 8) || inIPv4CIDR(ip, "172.16.0.0", 12) || inIPv4CIDR(ip, "192.168.0.0", 16)) types.push("私网地址");
+        if (inIPv4CIDR(ip, "100.64.0.0", 10)) types.push("CGNAT 地址");
+        if (inIPv4CIDR(ip, "127.0.0.0", 8)) types.push("回环地址");
+        if (inIPv4CIDR(ip, "169.254.0.0", 16)) types.push("链路本地地址");
+        if (inIPv4CIDR(ip, "224.0.0.0", 4)) types.push("多播地址");
+        if (inIPv4CIDR(ip, "0.0.0.0", 8) || inIPv4CIDR(ip, "240.0.0.0", 4) || ip === 0xffffffff) types.push("保留地址");
+        if (inIPv4CIDR(ip, "192.0.2.0", 24) || inIPv4CIDR(ip, "198.51.100.0", 24) || inIPv4CIDR(ip, "203.0.113.0", 24)) types.push("文档示例地址");
+        if (!types.length) types.push("公网单播地址");
+        return [["IP 版本", "IPv4"], ["规范化地址", intToIPv4(ip)], ["类型", types.join(currentLang === "zh" ? "；" : "; ")], ["是否通常可公网路由", types[0] === "公网单播地址" ? "是" : "否"]];
+      } catch (_) {
+        const ip = parseIPv6(input);
+        const types = [];
+        if (ip === 1n) types.push("回环地址");
+        if ((ip >> 120n) === 0xffn) types.push("多播地址");
+        if ((ip >> 121n) === 0x7en) types.push("唯一本地地址 ULA");
+        if ((ip >> 118n) === 0x3fan) types.push("链路本地地址");
+        if ((ip >> 96n) === 0x20010db8n) types.push("文档示例地址");
+        if (ip === 0n) types.push("未指定地址");
+        if (!types.length) types.push("公网单播地址或特殊全局地址");
+        return [["IP 版本", "IPv6"], ["压缩格式", formatIPv6(ip)], ["类型", types.join(currentLang === "zh" ? "；" : "; ")], ["是否通常可公网路由", types[0].startsWith("公网") ? "是" : "否"]];
+      }
+    }
+
+    function inIPv4CIDR(ip, network, prefix) {
+      const mask = prefixMask(prefix);
+      return (ip & mask) === (ipv4ToInt(network) & mask);
+    }
+
+    function reverseDNSRows(input) {
+      try {
+        const parts = intToIPv4Parts(ipv4ToInt(input));
+        return [["IP 版本", "IPv4"], ["反向 DNS", parts.reverse().join(".") + ".in-addr.arpa"]];
+      } catch (_) {
+        const expanded = ipv6Parts(parseIPv6(input)).map(x => x.padStart(4, "0")).join("");
+        return [["IP 版本", "IPv6"], ["反向 DNS", expanded.split("").reverse().join(".") + ".ip6.arpa"]];
+      }
+    }
+
+    function splitSubnet(cidr, childPrefixText) {
+      const childPrefix = Number(String(childPrefixText).trim().replace(/^\//, ""));
+      if (String(cidr).includes(":")) {
+        const parsed = parseIPv6CIDR(cidr);
+        if (!Number.isInteger(childPrefix) || childPrefix < parsed.prefix || childPrefix > 128) throw new Error("目标 IPv6 前缀必须在父级前缀到 128 之间");
+        const range = ipv6CIDRRange(parsed);
+        const step = 1n << BigInt(128 - childPrefix);
+        const count = 1n << BigInt(childPrefix - parsed.prefix);
+        const limit = count > 256n ? 256n : count;
+        const out = [];
+        for (let i = 0n; i < limit; i++) out.push(formatIPv6(range.start + i * step) + "/" + childPrefix);
+        if (count > 256n) out.push("... 共 " + formatBigInt(count) + " 个子网，仅显示前 256 个");
+        return out;
+      }
+      const parsed = parseCIDR(cidr);
+      if (!Number.isInteger(childPrefix) || childPrefix < parsed.prefix || childPrefix > 32) throw new Error("目标 IPv4 前缀必须在父级前缀到 32 之间");
+      const step = 2 ** (32 - childPrefix);
+      const count = 2 ** (childPrefix - parsed.prefix);
+      const limit = Math.min(count, 256);
+      const out = [];
+      for (let i = 0; i < limit; i++) out.push(intToIPv4(parsed.start + i * step) + "/" + childPrefix);
+      if (count > 256) out.push("... 共 " + count + " 个子网，仅显示前 256 个");
+      return out;
+    }
+
+    function bulkIPv4(text) {
+      const lines = String(text).split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+      if (!lines.length) throw new Error("请输入至少一个 IPv4 CIDR");
+      return lines.map(line => {
+        const range = parseCIDR(line);
+        const total = range.end - range.start + 1;
+        const first = range.prefix >= 31 ? range.start : range.start + 1;
+        const last = range.prefix >= 31 ? range.end : range.end - 1;
+        return `${line}\n  网络: ${intToIPv4(range.start)}\n  广播: ${intToIPv4(range.end)}\n  第一可用: ${intToIPv4(first)}\n  最后可用: ${intToIPv4(last)}\n  地址总数: ${total}`;
+      }).join("\n\n");
+    }
+
+    init();
+  </script>
+</body>
+</html>

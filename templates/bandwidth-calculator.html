@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>带宽计算器</title>
+  <style>
+    :root {
+      --bg: #edf4ff;
+      --bg-alt: #f8fbff;
+      --card: rgba(255, 255, 255, 0.84);
+      --card-strong: #ffffff;
+      --text: #0f172a;
+      --muted: #5b6882;
+      --line: rgba(30, 41, 59, 0.12);
+      --brand: #1768ff;
+      --brand-strong: #0f56da;
+      --brand-soft: rgba(23, 104, 255, 0.1);
+      --shadow: 0 20px 50px rgba(23, 54, 112, 0.12);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --ok: #15803d;
+      --warn: #b45309;
+      --font: "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(900px 420px at -10% -10%, rgba(111, 168, 255, 0.26), transparent 60%),
+        radial-gradient(820px 420px at 110% -15%, rgba(89, 192, 255, 0.18), transparent 58%),
+        linear-gradient(160deg, var(--bg), var(--bg-alt));
+    }
+
+    .wrap {
+      width: min(1180px, calc(100% - 24px));
+      margin: 18px auto 30px;
+    }
+
+    .topbar,
+    .hero,
+    .panel,
+    .result-card,
+    .tips {
+      border: 1px solid var(--line);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      background: linear-gradient(145deg, #72b7ff, #1768ff);
+      box-shadow: 0 8px 18px rgba(23, 104, 255, 0.34);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn,
+    .seg button,
+    .quick button {
+      border: 1px solid var(--line);
+      background: var(--card-strong);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 180ms ease;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .btn.primary {
+      color: #fff;
+      border-color: transparent;
+      background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+      box-shadow: 0 12px 24px rgba(23, 104, 255, 0.28);
+    }
+
+    .btn:hover,
+    .seg button:hover,
+    .quick button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 104, 255, 0.35);
+    }
+
+    .hero {
+      margin-top: 14px;
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.8fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      line-height: 1.12;
+      letter-spacing: -0.4px;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 15px;
+      max-width: 760px;
+    }
+
+    .hero-badge {
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(160deg, rgba(23, 104, 255, 0.1), rgba(18, 173, 255, 0.14));
+      border: 1px solid rgba(23, 104, 255, 0.14);
+    }
+
+    .hero-badge strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .hero-badge p {
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .layout {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+      gap: 14px;
+    }
+
+    .panel,
+    .tips {
+      border-radius: var(--radius-xl);
+      padding: 20px;
+    }
+
+    .section-title {
+      margin: 0 0 6px;
+      font-size: 21px;
+    }
+
+    .section-desc {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .seg {
+      display: inline-grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 6px;
+      border-radius: 18px;
+      background: rgba(23, 104, 255, 0.06);
+      margin-bottom: 18px;
+    }
+
+    .seg button {
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .seg button.active {
+      background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px;
+      gap: 10px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--card-strong);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(23, 104, 255, 0.42);
+      box-shadow: 0 0 0 4px rgba(23, 104, 255, 0.12);
+    }
+
+    .quick {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .quick button {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #fff;
+    }
+
+    .line-profile {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .line-profile button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 180ms ease;
+    }
+
+    .line-profile button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 104, 255, 0.35);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-card {
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .result-card strong {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .result-main {
+      font-size: 31px;
+      line-height: 1.1;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }
+
+    .result-sub {
+      margin: 10px 0 0;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.76);
+    }
+
+    .stat .k {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .stat .v {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .tips h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .tips ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .hint {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--brand-soft);
+      color: #24406e;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .warn {
+      color: var(--warn);
+    }
+
+    .ok {
+      color: var(--ok);
+    }
+
+    .compare {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .compare-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .compare-head h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .compare-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .compare-tabs {
+      display: inline-grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      background: rgba(23, 104, 255, 0.08);
+      border-radius: 14px;
+      padding: 5px;
+    }
+
+    .compare-tab {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .compare-tab.active {
+      background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .compare-body {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .compare-panel {
+      display: none;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .compare-panel.active {
+      display: grid;
+    }
+
+    .compare-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .compare-card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .compare-card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.75;
+    }
+
+    .tagline {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: rgba(23, 104, 255, 0.1);
+      color: #1449ad;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        border-radius: 22px;
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        width: min(1180px, calc(100% - 16px));
+      }
+
+      .hero {
+        padding: 22px;
+      }
+
+      .hero h1 {
+        font-size: 28px;
+      }
+
+      .grid,
+      .stats,
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+
+      .compare-tabs {
+        width: 100%;
+      }
+
+      .compare-body,
+      .compare-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <strong>带宽计算器</strong>
+          <span>文件传输时间与网络带宽需求估算</span>
+        </div>
+      </div>
+      <div class="toolbar">
+        <a href="/" class="btn">NetScope</a>
+        <a href="/nat-test" class="btn">NAT 检测</a>
+        <a href="/ip-look" class="btn">IP 查询</a>
+        <a href="/tools" class="btn">IP 工具</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div>
+        <h1>计算文件传输时间与所需带宽</h1>
+        <p>
+          你可以输入文件大小和现有带宽，快速估算上传或下载耗时；也可以反向输入目标完成时间，计算大约需要多大的网络带宽。
+        </p>
+      </div>
+      <div class="hero-badge">
+        <strong>计算说明</strong>
+        <p>
+          默认按十进制网络单位换算：1 Byte = 8 bit，1 Mbps = 1,000,000 bit/s。结果适合做规划估算，真实速度仍会受协议开销、线路质量、并发、磁盘性能和运营商策略影响。
+        </p>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <h2 class="section-title">开始计算</h2>
+        <p class="section-desc">选择计算模式后填写参数，支持常见文件容量和时长单位，结果会自动同步刷新。</p>
+
+        <div class="seg" id="modeSwitch">
+          <button type="button" class="active" data-mode="time">传输时间计算</button>
+          <button type="button" data-mode="bandwidth">带宽需求计算</button>
+          <button type="button" data-mode="capacity">并发与流量估算</button>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="fileSize">文件大小</label>
+            <div class="input-row">
+              <input id="fileSize" type="number" min="0" step="any" value="10" />
+              <select id="fileUnit">
+                <option value="MB">MB</option>
+                <option value="GB" selected>GB</option>
+                <option value="TB">TB</option>
+                <option value="KB">KB</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-transfer full">
+            <label for="transferType">传输方向 / 场景</label>
+            <select id="transferType">
+              <option value="download" selected>互联网下载（使用下行带宽）</option>
+              <option value="upload">互联网上传（使用上行带宽）</option>
+              <option value="lan">局域网传输（LAN）</option>
+            </select>
+          </div>
+
+          <div class="field mode-time">
+            <label for="upBandwidth">上行带宽（Upload）</label>
+            <div class="input-row">
+              <input id="upBandwidth" type="number" min="0" step="any" value="50" />
+              <select id="upBandwidthUnit">
+                <option value="Kbps">Kbps</option>
+                <option value="Mbps" selected>Mbps</option>
+                <option value="Gbps">Gbps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-time">
+            <label for="downBandwidth">下行带宽（Download）</label>
+            <div class="input-row">
+              <input id="downBandwidth" type="number" min="0" step="any" value="100" />
+              <select id="downBandwidthUnit">
+                <option value="Kbps">Kbps</option>
+                <option value="Mbps" selected>Mbps</option>
+                <option value="Gbps">Gbps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-time">
+            <label for="lanBandwidth">局域网带宽（LAN）</label>
+            <div class="input-row">
+              <input id="lanBandwidth" type="number" min="0" step="any" value="1" />
+              <select id="lanBandwidthUnit">
+                <option value="Mbps">Mbps</option>
+                <option value="Gbps" selected>Gbps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-bandwidth" style="display:none;">
+            <label for="duration">目标完成时间</label>
+            <div class="input-row">
+              <input id="duration" type="number" min="0" step="any" value="10" />
+              <select id="durationUnit">
+                <option value="second">秒</option>
+                <option value="minute" selected>分钟</option>
+                <option value="hour">小时</option>
+                <option value="day">天</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-capacity" style="display:none;">
+            <label for="concurrentUsers">同时在线人数</label>
+            <input id="concurrentUsers" type="number" min="0" step="1" value="200" />
+          </div>
+
+          <div class="field mode-capacity" style="display:none;">
+            <label for="perUserRate">单用户码率</label>
+            <div class="input-row">
+              <input id="perUserRate" type="number" min="0" step="any" value="3" />
+              <select id="perUserRateUnit">
+                <option value="Kbps">Kbps</option>
+                <option value="Mbps" selected>Mbps</option>
+                <option value="Gbps">Gbps</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field mode-capacity" style="display:none;">
+            <label for="dailyHours">日均高负载小时数</label>
+            <input id="dailyHours" type="number" min="0" step="any" value="6" />
+          </div>
+
+          <div class="field mode-capacity" style="display:none;">
+            <label for="daysPerMonth">按每月天数</label>
+            <input id="daysPerMonth" type="number" min="1" step="1" value="30" />
+          </div>
+
+          <div class="field">
+            <label for="efficiency">链路效率</label>
+            <div class="input-row">
+              <input id="efficiency" type="number" min="1" max="100" step="1" value="94" />
+              <select disabled>
+                <option> % 有效吞吐</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>快捷示例</label>
+            <div class="quick">
+              <button type="button" data-preset='{"mode":"time","fileSize":1,"fileUnit":"GB","transferType":"download","upBandwidth":30,"upBandwidthUnit":"Mbps","downBandwidth":100,"downBandwidthUnit":"Mbps","lanBandwidth":1,"lanBandwidthUnit":"Gbps"}'>下载 1GB</button>
+              <button type="button" data-preset='{"mode":"time","fileSize":20,"fileUnit":"GB","transferType":"upload","upBandwidth":50,"upBandwidthUnit":"Mbps","downBandwidth":200,"downBandwidthUnit":"Mbps","lanBandwidth":1,"lanBandwidthUnit":"Gbps"}'>上传 20GB</button>
+              <button type="button" data-preset='{"mode":"time","fileSize":500,"fileUnit":"GB","transferType":"lan","upBandwidth":100,"upBandwidthUnit":"Mbps","downBandwidth":500,"downBandwidthUnit":"Mbps","lanBandwidth":2.5,"lanBandwidthUnit":"Gbps"}'>局域网 500GB</button>
+              <button type="button" data-preset='{"mode":"bandwidth","fileSize":100,"fileUnit":"GB","transferType":"upload","duration":3,"durationUnit":"hour"}'>3小时传完 100GB</button>
+              <button type="button" data-preset='{"mode":"capacity","concurrentUsers":800,"perUserRate":2,"perUserRateUnit":"Mbps","dailyHours":4,"daysPerMonth":30}'>800人并发估算</button>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>典型线路预设（自动填充上/下行与 LAN）</label>
+            <div class="line-profile">
+              <button type="button" data-profile='{"up":30,"upUnit":"Mbps","down":300,"downUnit":"Mbps","lan":1,"lanUnit":"Gbps","efficiency":85,"transferType":"download"}'>家宽 300/30</button>
+              <button type="button" data-profile='{"up":100,"upUnit":"Mbps","down":1000,"downUnit":"Mbps","lan":1,"lanUnit":"Gbps","efficiency":88,"transferType":"download"}'>家宽 1000/100</button>
+              <button type="button" data-profile='{"up":200,"upUnit":"Mbps","down":200,"downUnit":"Mbps","lan":1,"lanUnit":"Gbps","efficiency":92,"transferType":"upload"}'>企业宽带 200M 对称</button>
+              <button type="button" data-profile='{"up":500,"upUnit":"Mbps","down":500,"downUnit":"Mbps","lan":1,"lanUnit":"Gbps","efficiency":93,"transferType":"upload"}'>企业宽带 500M 对称</button>
+              <button type="button" data-profile='{"up":1,"upUnit":"Gbps","down":1,"downUnit":"Gbps","lan":2.5,"lanUnit":"Gbps","efficiency":95,"transferType":"upload"}'>光纤专线 1G 对称</button>
+              <button type="button" data-profile='{"up":100,"upUnit":"Mbps","down":500,"downUnit":"Mbps","lan":1,"lanUnit":"Gbps","efficiency":94,"transferType":"lan"}'>千兆局域网</button>
+              <button type="button" data-profile='{"up":200,"upUnit":"Mbps","down":1000,"downUnit":"Mbps","lan":2.5,"lanUnit":"Gbps","efficiency":95,"transferType":"lan"}'>2.5G 局域网</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="calcBtn" class="btn primary" type="button">立即计算</button>
+          <button id="resetBtn" class="btn" type="button">重置</button>
+        </div>
+
+        <div class="hint" id="formulaHint">
+          当前模式：根据文件大小和所选方向带宽估算传输时间。计算公式为 <strong>时间 = 文件总 bit / 实际有效 bit/s</strong>。
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-card">
+          <strong id="mainResultLabel">预计传输时间</strong>
+          <p class="result-main" id="mainResult">13 分 41 秒</p>
+          <p class="result-sub" id="subResult">按 10 GB 文件、100 Mbps 带宽、94% 有效吞吐估算。</p>
+        </div>
+
+        <div class="result-card">
+          <div class="stats">
+            <div class="stat">
+              <div class="k" id="statK1">有效带宽</div>
+              <div class="v" id="statV1">94 Mbps</div>
+            </div>
+            <div class="stat">
+              <div class="k" id="statK2">文件总比特</div>
+              <div class="v" id="statV2">80 Gb</div>
+            </div>
+            <div class="stat">
+              <div class="k" id="statK3">文件总字节</div>
+              <div class="v" id="statV3">10 GB</div>
+            </div>
+            <div class="stat">
+              <div class="k" id="statK4">换算参考</div>
+              <div class="v" id="statV4">11.76 MB/s</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tips">
+          <h3>使用建议</h3>
+          <ul>
+            <li>上传大文件到网盘、对象存储、NAS 之前，可先估算完成时间，安排同步窗口。</li>
+            <li>需要在固定时间内传完数据时，切到“带宽需求计算”反推所需专线或出口带宽。</li>
+            <li>如果你知道线路有明显损耗，可把链路效率从 94% 调低到 80% 或更低，结果会更保守。</li>
+            <li class="warn">实际下载站点限速、磁盘写入瓶颈、CPU 解压缩、VPN 开销都会让真实耗时变长。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="compare">
+      <div class="compare-head">
+        <div>
+          <h3>公网 vs 局域网说明</h3>
+          <p>对比家宽、企业宽带与光纤专线在互联网和局域网场景中的差异，避免把理论带宽当成稳定到手速度。</p>
+        </div>
+        <div class="compare-tabs" id="compareTabs">
+          <button type="button" class="compare-tab active" data-target="public">公网传输</button>
+          <button type="button" class="compare-tab" data-target="lan">局域网传输</button>
+        </div>
+      </div>
+
+      <div class="compare-body">
+        <div class="compare-panel active" data-panel="public">
+          <article class="compare-card">
+            <span class="tagline">家宽</span>
+            <h4>上/下行常见非对称</h4>
+            <ul>
+              <li>常见套餐如 300M/30M、500M/50M，下行快而上行慢。</li>
+              <li>上传大文件、云备份常被上行限制，总耗时明显变长。</li>
+              <li>晚高峰拥塞和运营商策略会让实际速率低于理论值。</li>
+            </ul>
+          </article>
+          <article class="compare-card">
+            <span class="tagline">企业宽带</span>
+            <h4>稳定性更好但仍受共享影响</h4>
+            <ul>
+              <li>上下行通常更高，SLA 和故障响应普遍优于家庭宽带。</li>
+              <li>共享出口场景下，多人并发仍会分摊带宽。</li>
+              <li>跨网访问、国际链路、目标服务限速会影响下载体验。</li>
+            </ul>
+          </article>
+          <article class="compare-card">
+            <span class="tagline">光纤专线</span>
+            <h4>对称、低抖动、适合关键业务</h4>
+            <ul>
+              <li>常见上下行对称，适合异地容灾、专线传输、视频会议。</li>
+              <li>时延和抖动控制更好，连续大流量任务更可预测。</li>
+              <li>成本较高，建议结合并发人数和月流量做容量规划。</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="compare-panel" data-panel="lan">
+          <article class="compare-card">
+            <span class="tagline">千兆 LAN</span>
+            <h4>理论 1 Gbps != 持续 1 Gbps</h4>
+            <ul>
+              <li>千兆以太网理论值约 125 MB/s，实际常见约 90-115 MB/s。</li>
+              <li>TCP/IP 协议开销、SMB/NFS 开销会吃掉一部分带宽。</li>
+              <li>机械硬盘写入慢时，吞吐会先被磁盘限制而不是网卡。</li>
+            </ul>
+          </article>
+          <article class="compare-card">
+            <span class="tagline">2.5G/10G LAN</span>
+            <h4>设备链路需全栈匹配</h4>
+            <ul>
+              <li>交换机、网线、网卡、存储任一短板都会拖慢整体速度。</li>
+              <li>2.5G 理论约 312 MB/s，10G 理论约 1.25 GB/s。</li>
+              <li>多线程传输、Jumbo Frame、SSD 阵列可提升稳定吞吐。</li>
+            </ul>
+          </article>
+          <article class="compare-card">
+            <span class="tagline">实践建议</span>
+            <h4>做估算时要留冗余</h4>
+            <ul>
+              <li>建议把链路效率设置在 75%-95% 区间做乐观/保守两档预估。</li>
+              <li>先用本页估算，再用真实测速校准参数更接近生产结果。</li>
+              <li>关键任务建议按峰值并发和故障切换场景预留带宽空间。</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      mode: "time",
+    };
+
+    const units = {
+      file: {
+        KB: 1e3,
+        MB: 1e6,
+        GB: 1e9,
+        TB: 1e12,
+      },
+      bandwidth: {
+        Kbps: 1e3,
+        Mbps: 1e6,
+        Gbps: 1e9,
+      },
+      duration: {
+        second: 1,
+        minute: 60,
+        hour: 3600,
+        day: 86400,
+      },
+    };
+
+    const els = {
+      modeButtons: Array.from(document.querySelectorAll("#modeSwitch button")),
+      fileSize: document.getElementById("fileSize"),
+      fileUnit: document.getElementById("fileUnit"),
+      transferType: document.getElementById("transferType"),
+      upBandwidth: document.getElementById("upBandwidth"),
+      upBandwidthUnit: document.getElementById("upBandwidthUnit"),
+      downBandwidth: document.getElementById("downBandwidth"),
+      downBandwidthUnit: document.getElementById("downBandwidthUnit"),
+      lanBandwidth: document.getElementById("lanBandwidth"),
+      lanBandwidthUnit: document.getElementById("lanBandwidthUnit"),
+      duration: document.getElementById("duration"),
+      durationUnit: document.getElementById("durationUnit"),
+      concurrentUsers: document.getElementById("concurrentUsers"),
+      perUserRate: document.getElementById("perUserRate"),
+      perUserRateUnit: document.getElementById("perUserRateUnit"),
+      dailyHours: document.getElementById("dailyHours"),
+      daysPerMonth: document.getElementById("daysPerMonth"),
+      efficiency: document.getElementById("efficiency"),
+      calcBtn: document.getElementById("calcBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      quickButtons: Array.from(document.querySelectorAll(".quick button")),
+      profileButtons: Array.from(document.querySelectorAll(".line-profile button")),
+      modeTimeFields: Array.from(document.querySelectorAll(".mode-time")),
+      modeBandwidthFields: Array.from(document.querySelectorAll(".mode-bandwidth")),
+      modeTransferFields: Array.from(document.querySelectorAll(".mode-transfer")),
+      modeCapacityFields: Array.from(document.querySelectorAll(".mode-capacity")),
+      formulaHint: document.getElementById("formulaHint"),
+      mainResultLabel: document.getElementById("mainResultLabel"),
+      mainResult: document.getElementById("mainResult"),
+      subResult: document.getElementById("subResult"),
+      statK1: document.getElementById("statK1"),
+      statK2: document.getElementById("statK2"),
+      statK3: document.getElementById("statK3"),
+      statK4: document.getElementById("statK4"),
+      statV1: document.getElementById("statV1"),
+      statV2: document.getElementById("statV2"),
+      statV3: document.getElementById("statV3"),
+      statV4: document.getElementById("statV4"),
+      compareTabs: Array.from(document.querySelectorAll(".compare-tab")),
+      comparePanels: Array.from(document.querySelectorAll(".compare-panel")),
+    };
+
+    function numberValue(el) {
+      return Number(el.value);
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function formatNumber(value, digits = 2) {
+      if (!Number.isFinite(value)) return "-";
+      return new Intl.NumberFormat("zh-CN", {
+        maximumFractionDigits: digits,
+      }).format(value);
+    }
+
+    function formatBytesDecimal(bytes) {
+      const defs = [
+        [1e12, "TB"],
+        [1e9, "GB"],
+        [1e6, "MB"],
+        [1e3, "KB"],
+      ];
+      for (const [base, unit] of defs) {
+        if (bytes >= base) return `${formatNumber(bytes / base)} ${unit}`;
+      }
+      return `${formatNumber(bytes, 0)} B`;
+    }
+
+    function formatBitsDecimal(bits) {
+      const defs = [
+        [1e12, "Tb"],
+        [1e9, "Gb"],
+        [1e6, "Mb"],
+        [1e3, "Kb"],
+      ];
+      for (const [base, unit] of defs) {
+        if (bits >= base) return `${formatNumber(bits / base)} ${unit}`;
+      }
+      return `${formatNumber(bits, 0)} bit`;
+    }
+
+    function formatBitrate(bitsPerSecond) {
+      const defs = [
+        [1e9, "Gbps"],
+        [1e6, "Mbps"],
+        [1e3, "Kbps"],
+      ];
+      for (const [base, unit] of defs) {
+        if (bitsPerSecond >= base) return `${formatNumber(bitsPerSecond / base)} ${unit}`;
+      }
+      return `${formatNumber(bitsPerSecond, 0)} bps`;
+    }
+
+    function formatByteRate(bytesPerSecond) {
+      const defs = [
+        [1e9, "GB/s"],
+        [1e6, "MB/s"],
+        [1e3, "KB/s"],
+      ];
+      for (const [base, unit] of defs) {
+        if (bytesPerSecond >= base) return `${formatNumber(bytesPerSecond / base)} ${unit}`;
+      }
+      return `${formatNumber(bytesPerSecond, 0)} B/s`;
+    }
+
+    function formatDuration(totalSeconds) {
+      if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "-";
+      if (totalSeconds === 0) return "0 秒";
+
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const parts = [];
+
+      if (days) parts.push(`${days} 天`);
+      if (hours) parts.push(`${hours} 小时`);
+      if (minutes) parts.push(`${minutes} 分`);
+      if (seconds || parts.length === 0) {
+        const rounded = parts.length === 0 ? formatNumber(seconds) : formatNumber(seconds, 1);
+        parts.push(`${rounded} 秒`);
+      }
+
+      return parts.slice(0, 3).join(" ");
+    }
+
+    function setStats(items) {
+      els.statK1.textContent = items[0].k;
+      els.statV1.textContent = items[0].v;
+      els.statK2.textContent = items[1].k;
+      els.statV2.textContent = items[1].v;
+      els.statK3.textContent = items[2].k;
+      els.statV3.textContent = items[2].v;
+      els.statK4.textContent = items[3].k;
+      els.statV4.textContent = items[3].v;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      for (const button of els.modeButtons) {
+        button.classList.toggle("active", button.dataset.mode === mode);
+      }
+
+      const showTime = mode === "time";
+      const showBandwidth = mode === "bandwidth";
+      const showCapacity = mode === "capacity";
+      for (const field of els.modeTimeFields) field.style.display = showTime || showBandwidth ? "flex" : "none";
+      for (const field of els.modeTransferFields) field.style.display = showTime || showBandwidth ? "flex" : "none";
+      for (const field of els.modeBandwidthFields) field.style.display = showBandwidth ? "flex" : "none";
+      for (const field of els.modeCapacityFields) field.style.display = showCapacity ? "flex" : "none";
+
+      if (showTime) {
+        els.formulaHint.innerHTML = '当前模式：根据文件大小和所选方向带宽估算传输时间。计算公式为 <strong>时间 = 文件总 bit / 实际有效 bit/s</strong>。';
+        els.mainResultLabel.textContent = '预计传输时间';
+      } else if (showBandwidth) {
+        els.formulaHint.innerHTML = '当前模式：根据文件大小和目标时间反推所需带宽。计算公式为 <strong>带宽 = 文件总 bit / 目标秒数 / 效率</strong>。';
+        els.mainResultLabel.textContent = '所需网络带宽';
+      } else {
+        els.formulaHint.innerHTML = '当前模式：根据同时在线人数和单用户码率估算总带宽与月流量。公式为 <strong>总带宽 = 并发人数 x 单用户码率 / 效率</strong>。';
+        els.mainResultLabel.textContent = '规划总带宽';
+      }
+      calculate();
+    }
+
+    function selectedBandwidth(input) {
+      if (input.transferType === 'upload') {
+        return {
+          raw: input.raw.upBandwidth,
+          bps: input.upBandwidthBps,
+          unit: input.raw.upBandwidthUnit,
+          label: '上传',
+        };
+      }
+      if (input.transferType === 'lan') {
+        return {
+          raw: input.raw.lanBandwidth,
+          bps: input.lanBandwidthBps,
+          unit: input.raw.lanBandwidthUnit,
+          label: '局域网',
+        };
+      }
+      return {
+        raw: input.raw.downBandwidth,
+        bps: input.downBandwidthBps,
+        unit: input.raw.downBandwidthUnit,
+        label: '下载',
+      };
+    }
+
+    function readInputs() {
+      const fileSize = numberValue(els.fileSize);
+      const transferType = els.transferType.value;
+      const upBandwidth = numberValue(els.upBandwidth);
+      const downBandwidth = numberValue(els.downBandwidth);
+      const lanBandwidth = numberValue(els.lanBandwidth);
+      const duration = numberValue(els.duration);
+      const concurrentUsers = numberValue(els.concurrentUsers);
+      const perUserRate = numberValue(els.perUserRate);
+      const dailyHours = numberValue(els.dailyHours);
+      const daysPerMonth = numberValue(els.daysPerMonth);
+      const efficiencyPercent = clamp(numberValue(els.efficiency) || 0, 1, 100);
+
+      return {
+        fileBytes: fileSize * (units.file[els.fileUnit.value] || 0),
+        upBandwidthBps: upBandwidth * (units.bandwidth[els.upBandwidthUnit.value] || 0),
+        downBandwidthBps: downBandwidth * (units.bandwidth[els.downBandwidthUnit.value] || 0),
+        lanBandwidthBps: lanBandwidth * (units.bandwidth[els.lanBandwidthUnit.value] || 0),
+        durationSeconds: duration * (units.duration[els.durationUnit.value] || 0),
+        transferType,
+        concurrentUsers,
+        perUserRateBps: perUserRate * (units.bandwidth[els.perUserRateUnit.value] || 0),
+        dailyHours,
+        daysPerMonth,
+        efficiency: efficiencyPercent / 100,
+        efficiencyPercent,
+        raw: {
+          fileSize,
+          duration,
+          upBandwidth,
+          upBandwidthUnit: els.upBandwidthUnit.value,
+          downBandwidth,
+          downBandwidthUnit: els.downBandwidthUnit.value,
+          lanBandwidth,
+          lanBandwidthUnit: els.lanBandwidthUnit.value,
+          concurrentUsers,
+          perUserRate,
+          perUserRateUnit: els.perUserRateUnit.value,
+        },
+      };
+    }
+
+    function renderInvalid(message) {
+      els.mainResult.textContent = message;
+      els.subResult.textContent = '请填写大于 0 的数值。';
+      setStats([
+        { k: '结果 1', v: '-' },
+        { k: '结果 2', v: '-' },
+        { k: '结果 3', v: '-' },
+        { k: '结果 4', v: '-' },
+      ]);
+    }
+
+    function calculate() {
+      const input = readInputs();
+      const totalBits = input.fileBytes * 8;
+
+      if (state.mode === 'capacity') {
+        if (!(input.concurrentUsers > 0)) {
+          renderInvalid('请输入并发人数');
+          return;
+        }
+
+        if (!(input.perUserRateBps > 0)) {
+          renderInvalid('请输入单用户码率');
+          return;
+        }
+
+        if (!(input.dailyHours > 0) || !(input.daysPerMonth > 0)) {
+          renderInvalid('请输入日均小时数和每月天数');
+          return;
+        }
+
+        const baseBps = input.concurrentUsers * input.perUserRateBps;
+        const planBps = baseBps / input.efficiency;
+        const dayBits = baseBps * input.dailyHours * 3600;
+        const monthBits = dayBits * input.daysPerMonth;
+        const dayBytes = dayBits / 8;
+        const monthBytes = monthBits / 8;
+
+        els.mainResult.textContent = formatBitrate(planBps);
+        els.subResult.textContent = `按同时在线 ${formatNumber(input.concurrentUsers, 0)} 人、单用户 ${formatNumber(input.raw.perUserRate)} ${input.raw.perUserRateUnit}、日均 ${formatNumber(input.dailyHours)} 小时、每月 ${formatNumber(input.daysPerMonth, 0)} 天估算。`;
+        setStats([
+          { k: '满载带宽', v: formatBitrate(baseBps) },
+          { k: '效率修正后', v: formatBitrate(planBps) },
+          { k: '预估日流量', v: formatBytesDecimal(dayBytes) },
+          { k: '预估月流量', v: formatBytesDecimal(monthBytes) },
+        ]);
+        return;
+      }
+
+      if (!(input.fileBytes > 0)) {
+        renderInvalid('请输入文件大小');
+        return;
+      }
+
+      const selected = selectedBandwidth(input);
+
+      if (state.mode === 'time') {
+        if (!(selected.bps > 0)) {
+          renderInvalid(`请输入${selected.label}带宽`);
+          return;
+        }
+
+        const effectiveBps = selected.bps * input.efficiency;
+        const seconds = totalBits / effectiveBps;
+
+        els.mainResult.textContent = formatDuration(seconds);
+        els.subResult.textContent = `按 ${selected.label}场景，文件 ${formatNumber(input.raw.fileSize)} ${els.fileUnit.value}、带宽 ${formatNumber(selected.raw)} ${selected.unit}、效率 ${input.efficiencyPercent}% 估算。`;
+        setStats([
+          { k: '有效带宽', v: formatBitrate(effectiveBps) },
+          { k: '文件总比特', v: formatBitsDecimal(totalBits) },
+          { k: '文件总字节', v: formatBytesDecimal(input.fileBytes) },
+          { k: '换算参考', v: formatByteRate(effectiveBps / 8) },
+        ]);
+      } else {
+        if (!(input.durationSeconds > 0)) {
+          renderInvalid('请输入目标时间');
+          return;
+        }
+
+        const requiredBps = totalBits / input.durationSeconds / input.efficiency;
+        const effectiveBps = requiredBps * input.efficiency;
+        const gapBps = selected.bps - requiredBps;
+        const gapText = selected.bps > 0
+          ? (gapBps >= 0 ? `当前${selected.label}带宽可满足，余量 ${formatBitrate(gapBps)}。` : `当前${selected.label}带宽不足，缺口 ${formatBitrate(Math.abs(gapBps))}。`)
+          : `可填写当前${selected.label}带宽用于对比是否充足。`;
+
+        els.mainResult.textContent = formatBitrate(requiredBps);
+        els.subResult.textContent = `要在 ${formatNumber(input.raw.duration)} ${durationUnitLabel(els.durationUnit.value)} 内传完 ${formatNumber(input.raw.fileSize)} ${els.fileUnit.value}，按 ${input.efficiencyPercent}% 有效吞吐估算。`;
+        setStats([
+          { k: '目标有效吞吐', v: formatBitrate(effectiveBps) },
+          { k: '当前方向带宽', v: selected.bps > 0 ? formatBitrate(selected.bps) : '-' },
+          { k: '文件总字节', v: formatBytesDecimal(input.fileBytes) },
+          { k: '带宽对比', v: gapText },
+        ]);
+      }
+    }
+
+    function durationUnitLabel(unit) {
+      if (unit === 'second') return '秒';
+      if (unit === 'minute') return '分钟';
+      if (unit === 'hour') return '小时';
+      if (unit === 'day') return '天';
+      return unit;
+    }
+
+    function applyPreset(preset) {
+      if (preset.mode) setMode(preset.mode);
+      if (preset.fileSize !== undefined) els.fileSize.value = preset.fileSize;
+      if (preset.fileUnit) els.fileUnit.value = preset.fileUnit;
+      if (preset.transferType) els.transferType.value = preset.transferType;
+      if (preset.upBandwidth !== undefined) els.upBandwidth.value = preset.upBandwidth;
+      if (preset.upBandwidthUnit) els.upBandwidthUnit.value = preset.upBandwidthUnit;
+      if (preset.downBandwidth !== undefined) els.downBandwidth.value = preset.downBandwidth;
+      if (preset.downBandwidthUnit) els.downBandwidthUnit.value = preset.downBandwidthUnit;
+      if (preset.lanBandwidth !== undefined) els.lanBandwidth.value = preset.lanBandwidth;
+      if (preset.lanBandwidthUnit) els.lanBandwidthUnit.value = preset.lanBandwidthUnit;
+      if (preset.duration !== undefined) els.duration.value = preset.duration;
+      if (preset.durationUnit) els.durationUnit.value = preset.durationUnit;
+      if (preset.concurrentUsers !== undefined) els.concurrentUsers.value = preset.concurrentUsers;
+      if (preset.perUserRate !== undefined) els.perUserRate.value = preset.perUserRate;
+      if (preset.perUserRateUnit) els.perUserRateUnit.value = preset.perUserRateUnit;
+      if (preset.dailyHours !== undefined) els.dailyHours.value = preset.dailyHours;
+      if (preset.daysPerMonth !== undefined) els.daysPerMonth.value = preset.daysPerMonth;
+      calculate();
+    }
+
+    function applyLineProfile(profile) {
+      setMode('time');
+      els.upBandwidth.value = profile.up;
+      els.upBandwidthUnit.value = profile.upUnit;
+      els.downBandwidth.value = profile.down;
+      els.downBandwidthUnit.value = profile.downUnit;
+      els.lanBandwidth.value = profile.lan;
+      els.lanBandwidthUnit.value = profile.lanUnit;
+      els.efficiency.value = profile.efficiency;
+      els.transferType.value = profile.transferType || 'download';
+      calculate();
+    }
+
+    function resetForm() {
+      els.fileSize.value = 10;
+      els.fileUnit.value = 'GB';
+      els.transferType.value = 'download';
+      els.upBandwidth.value = 50;
+      els.upBandwidthUnit.value = 'Mbps';
+      els.downBandwidth.value = 100;
+      els.downBandwidthUnit.value = 'Mbps';
+      els.lanBandwidth.value = 1;
+      els.lanBandwidthUnit.value = 'Gbps';
+      els.duration.value = 10;
+      els.durationUnit.value = 'minute';
+      els.concurrentUsers.value = 200;
+      els.perUserRate.value = 3;
+      els.perUserRateUnit.value = 'Mbps';
+      els.dailyHours.value = 6;
+      els.daysPerMonth.value = 30;
+      els.efficiency.value = 94;
+      setMode('time');
+    }
+
+    for (const button of els.modeButtons) {
+      button.addEventListener('click', () => setMode(button.dataset.mode));
+    }
+
+    for (const el of [
+      els.fileSize,
+      els.fileUnit,
+      els.transferType,
+      els.upBandwidth,
+      els.upBandwidthUnit,
+      els.downBandwidth,
+      els.downBandwidthUnit,
+      els.lanBandwidth,
+      els.lanBandwidthUnit,
+      els.duration,
+      els.durationUnit,
+      els.concurrentUsers,
+      els.perUserRate,
+      els.perUserRateUnit,
+      els.dailyHours,
+      els.daysPerMonth,
+      els.efficiency,
+    ]) {
+      el.addEventListener('input', calculate);
+      el.addEventListener('change', calculate);
+    }
+
+    els.calcBtn.addEventListener('click', calculate);
+    els.resetBtn.addEventListener('click', resetForm);
+
+    for (const button of els.quickButtons) {
+      button.addEventListener('click', () => {
+        const preset = JSON.parse(button.dataset.preset);
+        applyPreset(preset);
+      });
+    }
+
+    for (const button of els.profileButtons) {
+      button.addEventListener('click', () => {
+        const profile = JSON.parse(button.dataset.profile);
+        applyLineProfile(profile);
+      });
+    }
+
+    for (const tab of els.compareTabs) {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.target;
+        for (const t of els.compareTabs) t.classList.toggle('active', t === tab);
+        for (const panel of els.comparePanels) {
+          panel.classList.toggle('active', panel.dataset.panel === target);
+        }
+      });
+    }
+
+    calculate();
+  </script>
+</body>
+</html>

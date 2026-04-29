@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IP 查询与 NAT 检测 - NetScope 网络视镜</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-a: #eef3ff;
+      --bg-b: #f7fbff;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-strong: #ffffff;
+      --text: #101522;
+      --muted: #5f6b86;
+      --line: rgba(30, 41, 59, 0.12);
+      --accent: #247cff;
+      --accent-strong: #1362dc;
+      --ok: #1d8a49;
+      --danger: #cf2f3f;
+      --shadow: 0 12px 36px rgba(31, 57, 112, 0.12);
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --font: "SF Pro Text", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-a: #0d1322;
+      --bg-b: #141c30;
+      --surface: rgba(16, 24, 40, 0.72);
+      --surface-strong: #101a2d;
+      --text: #eaf0ff;
+      --muted: #9aa8c8;
+      --line: rgba(176, 194, 232, 0.18);
+      --accent: #69a4ff;
+      --accent-strong: #4f8ef3;
+      --ok: #5ad78a;
+      --danger: #ff7d87;
+      --shadow: 0 18px 48px rgba(3, 8, 19, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(920px 420px at -2% -6%, rgba(135, 184, 255, 0.2), transparent 62%),
+        radial-gradient(760px 460px at 102% -12%, rgba(157, 206, 255, 0.16), transparent 58%),
+        linear-gradient(165deg, var(--bg-a), var(--bg-b));
+      transition: background 240ms ease, color 240ms ease;
+    }
+
+    .wrap {
+      width: min(1160px, calc(100% - 28px));
+      margin: 18px auto 28px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 6px;
+    }
+
+    .logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #70adff, #1f78ff);
+      box-shadow: 0 6px 16px rgba(36, 124, 255, 0.36);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+      font-weight: 620;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .menu-toggle {
+      display: none;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--surface-strong);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 550;
+      transition: all 180ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(36, 124, 255, 0.36);
+    }
+
+    .btn.primary {
+      background: linear-gradient(145deg, var(--accent), var(--accent-strong));
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(29, 104, 223, 0.28);
+    }
+
+    .btn.link {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .hero,
+    .card {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .hero {
+      padding: 22px;
+    }
+
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 860px;
+      line-height: 1.65;
+    }
+
+    .card {
+      padding: 18px;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title-row h3 {
+      margin: 0;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface-strong);
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .input:focus {
+      border-color: rgba(34, 120, 255, 0.45);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
+    }
+
+    .muted {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 620;
+      color: #fff;
+      background: #6b7280;
+    }
+
+    .badge.residential { background: #2d8a34; }
+    .badge.mobile { background: #3769ff; }
+    .badge.datacenter { background: #d46b08; }
+    .badge.business { background: #0066cc; }
+    .badge.hosting { background: #b35c00; }
+    .badge.unknown { background: #6b7280; }
+
+    .nat-summary {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--surface-strong);
+    }
+
+    .nat-badge {
+      width: 98px;
+      height: 98px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--accent-strong);
+      background: rgba(36, 124, 255, 0.14);
+      border: 4px solid rgba(36, 124, 255, 0.22);
+    }
+
+    .nat-name {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: var(--text);
+    }
+
+    .nat-desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .nat-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      background: var(--surface-strong);
+    }
+
+    .nat-head {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .nat-subline {
+      margin: 8px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .nat-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .nat-kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--surface);
+      min-width: 0;
+    }
+
+    .nat-kpi-label {
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .nat-kpi-value {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .nat-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .nat-detail-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--surface);
+    }
+
+    .nat-detail-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 620;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+
+    .nat-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 6px;
+    }
+
+    .nat-item {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .nat-item-key {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .nat-item-value {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .nat-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 18px;
+      border: 1px solid transparent;
+      margin-right: 8px;
+      margin-bottom: 4px;
+    }
+
+    .nat-tag.good { color: var(--ok); border-color: rgba(29, 138, 73, 0.24); background: rgba(29, 138, 73, 0.1); }
+    .nat-tag.warn { color: #c57a11; border-color: rgba(197, 122, 17, 0.24); background: rgba(197, 122, 17, 0.1); }
+    .nat-tag.bad { color: var(--danger); border-color: rgba(207, 47, 63, 0.24); background: rgba(207, 47, 63, 0.1); }
+    .nat-tag.info { color: var(--accent); border-color: rgba(36, 124, 255, 0.24); background: rgba(36, 124, 255, 0.1); }
+
+    .compat {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .compat-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 10px 8px;
+      text-align: center;
+      background: var(--surface-strong);
+    }
+
+    .compat-item .score {
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .compat-item .name {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .ok { color: var(--ok); font-weight: 620; }
+    .danger { color: var(--danger); font-weight: 620; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 7px;
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td:first-child {
+      width: 224px;
+      color: var(--muted);
+      font-weight: 540;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(14, 20, 34, 0.95);
+      color: #d7e6ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .wrap {
+        width: min(1160px, calc(100% - 18px));
+      }
+
+      .topbar {
+        top: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 18px;
+      }
+
+      .topbar-head {
+        width: 100%;
+      }
+
+      .brand {
+        justify-content: flex-start;
+        padding-left: 0;
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .toolbar {
+        display: none;
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+      }
+
+      .toolbar.is-open {
+        display: grid;
+      }
+
+      .hero h2 {
+        font-size: 22px;
+      }
+
+      .input-row {
+        grid-template-columns: 1fr;
+      }
+
+      .compat {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .nat-summary,
+      .nat-head {
+        grid-template-columns: 1fr;
+      }
+
+      .nat-kpis,
+      .nat-detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .nat-badge {
+        width: 84px;
+        height: 84px;
+        font-size: 26px;
+      }
+
+      .toolbar .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .card-title-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 760px) {
+      td,
+      tr,
+      table,
+      tbody {
+        display: block;
+      }
+
+      tr {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      tr:last-child {
+        border-bottom: none;
+      }
+
+      td {
+        border-bottom: none;
+        width: 100%;
+        padding: 4px 0;
+      }
+
+      td:first-child {
+        width: 100%;
+        margin-bottom: 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbar-head">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <h1 data-i18n="appTitle">IP Query</h1>
+        </div>
+        <button id="menuToggleBtn" class="btn menu-toggle" type="button" data-i18n="mobileMenu" aria-expanded="false">Menu</button>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <a href="/" class="btn link" data-i18n="goMy">NetScope</a>
+        <a href="/nat-test" class="btn link" data-i18n="natTest">NAT Test</a>
+        <a href="/screen-test" class="btn link" data-i18n="screenTest">Screen Test</a>
+        <a href="/bandwidth-calculator" class="btn link" data-i18n="bandwidthCalculator">Bandwidth Calculator</a>
+        <button id="langBtn" class="btn">EN</button>
+        <button id="themeBtn" class="btn" data-i18n="themeAuto">Theme: Auto</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <h2 data-i18n="heroTitle">IP Query + Browser NAT Insight</h2>
+      <p data-i18n="heroDesc">Quickly query any IP/domain and detect your browser-side NAT using WebRTC ICE candidates.</p>
+    </section>
+
+    <section class="card">
+      <div class="input-row">
+        <input id="queryInput" class="input" placeholder="8.8.8.8 / google.com" value="8.8.8.8" />
+        <button id="queryBtn" class="btn primary" data-i18n="queryBtn">Query IP</button>
+        <button id="natBtn" class="btn" data-i18n="natBtn">Detect NAT</button>
+      </div>
+      <p class="muted" data-i18n="hint">IP query targets a host, while NAT detection describes your current browser network path.</p>
+    </section>
+
+    <section class="card">
+      <h3 data-i18n="ipResultTitle">IP Query Result</h3>
+      <div id="ipResult">-</div>
+    </section>
+
+    <section class="card">
+      <h3 data-i18n="natResultTitle">Browser NAT Result</h3>
+      <div id="natResult">
+        <div class="nat-summary">
+          <div class="nat-badge">NAT?</div>
+          <div>
+            <p class="nat-name">-</p>
+            <p class="nat-desc">-</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title-row">
+        <h3 data-i18n="iceTitle">WebRTC ICE Candidates</h3>
+        <button id="copyCandidatesBtn" class="btn" type="button" data-i18n="copyCandidates">Copy</button>
+      </div>
+      <pre id="candidates">-</pre>
+    </section>
+  </div>
+
+  <script src="/assets/js/i18n.js"></script>
+  <script src="/assets/js/ui-common.js"></script>
+  <script src="/assets/js/mobile-nav.js"></script>
+  <script>
+    const I18N = (window.APP_I18N && window.APP_I18N.index) || {
+      zh: { fields: {} },
+      en: { fields: {} }
+    };
+    const ui = window.UICommon.createUIContext({
+      i18n: I18N,
+      onApplyI18n: (lang) => {
+        document.getElementById("queryInput").placeholder =
+          lang === "zh" ? "输入 IPv4 / IPv6 / 域名，例如 8.8.8.8" : "Enter IPv4 / IPv6 / domain, e.g. 8.8.8.8";
+      }
+    });
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function t(key) {
+      return ui.t(key);
+    }
+
+    function f(key) {
+      return ui.f(key);
+    }
+
+    function tableRow(label, value) {
+      return `<tr><td>${escapeHtml(label)}</td><td>${value}</td></tr>`;
+    }
+
+    async function getJSON(url, options) {
+      const resp = await fetch(url, options);
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "request failed");
+      }
+      return data;
+    }
+
+    function setCopyButtonText(text) {
+      const button = document.getElementById("copyCandidatesBtn");
+      if (button) button.textContent = text;
+    }
+
+    async function writeClipboardText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (!copied) throw new Error("copy failed");
+    }
+
+    async function copyCandidates() {
+      const button = document.getElementById("copyCandidatesBtn");
+      const candidates = document.getElementById("candidates");
+      if (!button || !candidates) return;
+      const defaultLabel = t("copyCandidates") || button.textContent || "Copy";
+      try {
+        await writeClipboardText(candidates.textContent || "");
+        setCopyButtonText(ui.getLang() === "zh" ? "已复制" : "Copied");
+      } catch (err) {
+        setCopyButtonText(ui.getLang() === "zh" ? "复制失败" : "Copy failed");
+      }
+      window.setTimeout(() => setCopyButtonText(defaultLabel), 1600);
+    }
+
+    function yesNo(v) {
+      return v ? `<span class="danger">${t("yes")}</span>` : `<span class="ok">${t("no")}</span>`;
+    }
+
+    function natPresence(v) {
+      if (v === null || v === undefined) return `<span class="warn">${t("unknown")}</span>`;
+      return yesNo(v);
+    }
+
+    function translateValue(value, map) {
+      if (value === null || value === undefined) return "";
+      const raw = String(value).trim();
+      if (!raw) return "";
+      if (ui.getLang() !== "zh") return raw;
+      return map[raw.toLowerCase()] || raw;
+    }
+
+    function localizedNatType(data) {
+      if (ui.getLang() === "zh") return data.type_name_zh || data.type_name || t("unknown");
+      return data.type_name || data.type_name_zh || t("unknown");
+    }
+
+    function natLabel(data) {
+      const code = data.type_code || "unknown";
+      if (code === "open" || code === "direct") return "NAT0";
+      if (code === "full_cone") return "NAT1";
+      if (["restricted_cone", "port_restricted", "cone"].includes(code)) return "NAT2";
+      if (["symmetric", "relay", "udp_blocked", "udp_restricted"].includes(code)) return "NAT3";
+      return "NAT?";
+    }
+
+    function natScoreClass(score) {
+      if (score === "Best" || score === "Good") return "good";
+      if (score === "Moderate") return "warn";
+      return "bad";
+    }
+
+    function localizeNatScore(score) {
+      if (ui.getLang() !== "zh") return score;
+      return {
+        Best: "最佳",
+        Good: "良好",
+        Moderate: "一般",
+        Limited: "受限",
+        Unknown: "无法判断"
+      }[score] || score;
+    }
+
+    function buildCompatibility(typeCode) {
+      const names = ui.getLang() === "zh"
+        ? ["在线游戏", "P2P 下载", "视频通话", "远程访问"]
+        : ["Online gaming", "P2P downloads", "Video calls", "Remote access"];
+      const map = {
+        open: ["Best", "Best", "Best", "Best"],
+        direct: ["Best", "Best", "Best", "Good"],
+        full_cone: ["Best", "Good", "Best", "Good"],
+        restricted_cone: ["Good", "Good", "Best", "Moderate"],
+        port_restricted: ["Moderate", "Moderate", "Good", "Limited"],
+        cone: ["Good", "Good", "Best", "Good"],
+        symmetric: ["Limited", "Limited", "Good", "Limited"],
+        udp_blocked: ["Limited", "Limited", "Moderate", "Limited"],
+        relay: ["Moderate", "Limited", "Good", "Good"],
+        udp_restricted: ["Moderate", "Moderate", "Good", "Limited"]
+      };
+      const scores = map[typeCode] || ["Unknown", "Unknown", "Unknown", "Unknown"];
+      return scores.map((score, index) => [score, names[index]]);
+    }
+
+    function renderNatPresence(value) {
+      if (value === null || value === undefined) return `<span class="nat-tag warn">${t("unknown")}</span>`;
+      return value ? `<span class="nat-tag warn">${t("yes")}</span>` : `<span class="nat-tag good">${t("no")}</span>`;
+    }
+
+    function renderLocalIP(data) {
+      if (data.local_ip) return escapeHtml(data.local_ip);
+      if (data.type_code === "webrtc_srflx_unavailable" || data.method === "webrtc-ice-multi-stun") {
+        return `<span class="nat-tag warn">${ui.getLang() === "zh" ? "浏览器已隐藏（mDNS）" : "Hidden by browser (mDNS)"}</span>`;
+      }
+      return "-";
+    }
+
+    function localizedQueryType(value) {
+      return translateValue(value, {
+        ip: "IP",
+        domain: "域名"
+      });
+    }
+
+    function localizedConfidence(value) {
+      return translateValue(value, {
+        low: "低",
+        medium: "中",
+        high: "高"
+      });
+    }
+
+    function localizedMethod(value) {
+      return translateValue(value, {
+        "webrtc-ice-multi-stun": "WebRTC ICE 多 STUN 探测"
+      });
+    }
+
+    function localizedConnectionMode(value) {
+      return translateValue(value, {
+        unknown: "未知",
+        direct: "直连",
+        mapped: "映射",
+        relay: "中继"
+      });
+    }
+
+    function localizedCandidateType(value) {
+      return translateValue(value, {
+        host: "主机候选",
+        srflx: "服务器反射候选",
+        relay: "中继候选",
+        prflx: "对等反射候选"
+      });
+    }
+
+    function localizedGatheringState(value) {
+      return translateValue(value, {
+        new: "未开始",
+        gathering: "收集中",
+        complete: "已完成"
+      });
+    }
+
+    function renderIPResult(data) {
+      const badgeCode = data.ip_type && data.ip_type.code ? data.ip_type.code : "unknown";
+      const badgeLabel = data.ip_type && data.ip_type.label ? data.ip_type.label : t("unknown");
+      const rows = [
+        tableRow(f("address"), `${escapeHtml(data.address && data.address.ip ? data.address.ip : "")} <span class="badge ${escapeHtml(badgeCode)}">${escapeHtml(badgeLabel)}</span>`),
+        tableRow(f("query"), escapeHtml(data.address && data.address.query ? data.address.query : "")),
+        tableRow(f("queryType"), escapeHtml(localizedQueryType(data.address && data.address.query_type ? data.address.query_type : ""))),
+        tableRow(f("ipVersion"), escapeHtml(data.address && data.address.ip_version ? data.address.ip_version : "")),
+        tableRow(f("hostname"), escapeHtml(data.address && data.address.hostname ? data.address.hostname : "")),
+        tableRow(f("ipv4List"), (data.address && data.address.ipv4_list ? data.address.ipv4_list : []).map(escapeHtml).join("<br>") || "-"),
+        tableRow(f("ipv6List"), (data.address && data.address.ipv6_list ? data.address.ipv6_list : []).map(escapeHtml).join("<br>") || "-"),
+        tableRow(f("isp"), escapeHtml(data.network && data.network.isp ? data.network.isp : "")),
+        tableRow(f("ipOrganization"), escapeHtml(data.network && data.network.ip_organization ? data.network.ip_organization : "")),
+        tableRow(f("asn"), escapeHtml(data.network && data.network.asn ? data.network.asn : "")),
+        tableRow(f("asnNumber"), escapeHtml(data.network && data.network.asn_number ? data.network.asn_number : "")),
+        tableRow(f("asnOrganization"), escapeHtml(data.network && data.network.asn_organization ? data.network.asn_organization : "")),
+        tableRow(f("network"), escapeHtml(data.network && data.network.network ? data.network.network : "") || "-"),
+        tableRow(f("location"), escapeHtml(data.location && data.location.formatted ? data.location.formatted : "")),
+        tableRow(f("country"), `${escapeHtml(data.location && data.location.country ? data.location.country : "")} (${escapeHtml(data.location && data.location.country_code ? data.location.country_code : "")})`),
+        tableRow(f("regionCity"), `${escapeHtml(data.location && data.location.region ? data.location.region : "")} / ${escapeHtml(data.location && data.location.city ? data.location.city : "")}`),
+        tableRow(f("postalCode"), escapeHtml(data.location && data.location.postal_code ? data.location.postal_code : "")),
+        tableRow(f("timezone"), escapeHtml(data.location && data.location.timezone ? data.location.timezone : "")),
+        tableRow(f("latLng"), `${escapeHtml(data.location && data.location.latitude ? data.location.latitude : "")} / ${escapeHtml(data.location && data.location.longitude ? data.location.longitude : "")}`),
+        tableRow(f("proxy"), yesNo(data.security && data.security.is_proxy)),
+        tableRow(f("vpn"), yesNo(data.security && data.security.is_vpn)),
+        tableRow(f("tor"), yesNo(data.security && data.security.is_tor)),
+        tableRow(f("datacenter"), yesNo(data.security && data.security.is_datacenter)),
+        tableRow(f("hosting"), yesNo(data.security && data.security.is_hosting)),
+        tableRow(f("mobile"), yesNo(data.security && data.security.is_mobile)),
+        tableRow(f("geoSource"), escapeHtml(data.source && data.source.geo_source ? data.source.geo_source : "")),
+        tableRow(f("asnSource"), escapeHtml(data.source && data.source.asn_source ? data.source.asn_source : "")),
+        tableRow(f("securitySource"), escapeHtml(data.source && data.source.security_source ? data.source.security_source : "")),
+        tableRow(f("ispSource"), escapeHtml(data.source && data.source.isp_source ? data.source.isp_source : ""))
+      ];
+      document.getElementById("ipResult").innerHTML = `<table>${rows.join("")}</table>`;
+    }
+
+    function renderNATResult(data) {
+      const type = localizedNatType(data) || t("unknown");
+      const altType = ui.getLang() === "zh" ? (data.type_name || "Unknown") : (data.type_name_zh || "未知");
+      const detectTitle = ui.getLang() === "zh" ? "检测信息" : "Detection";
+      const abilityTitle = ui.getLang() === "zh" ? "连通能力" : "Connectivity";
+      const compatibility = buildCompatibility(data.type_code || "").map((item) => {
+        return `<div class="compat-item"><div class="score"><span class="nat-tag ${natScoreClass(item[0])}">${escapeHtml(localizeNatScore(item[0]))}</span></div><div class="name">${escapeHtml(item[1])}</div></div>`;
+      }).join("");
+
+      function boolValue(v) {
+        return v ? `<span class="nat-tag good">${t("yes")}</span>` : `<span class="nat-tag bad">${t("no")}</span>`;
+      }
+
+      document.getElementById("natResult").innerHTML = `
+        <div class="nat-panel">
+          <div class="nat-head">
+            <div class="nat-badge">${escapeHtml(natLabel(data))}</div>
+            <div>
+              <p class="nat-name">${escapeHtml(type)} / ${escapeHtml(altType)}</p>
+              <p class="nat-desc">${escapeHtml(data.description || "")}</p>
+              <div class="nat-subline">
+                ${renderNatPresence(data.has_nat)}
+                <span class="nat-tag info">${escapeHtml(localizedConnectionMode(data.connection_mode || "")) || "-"}</span>
+                <span class="nat-tag info">${escapeHtml(localizedConfidence(data.confidence || "-"))}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="nat-kpis">
+            <div class="nat-kpi">
+              <p class="nat-kpi-label">${escapeHtml(f("publicIp"))}</p>
+              <p class="nat-kpi-value">${escapeHtml(data.public_ip || "-")}</p>
+            </div>
+            <div class="nat-kpi">
+              <p class="nat-kpi-label">${escapeHtml(f("publicPort"))}</p>
+              <p class="nat-kpi-value">${escapeHtml(data.public_port || "-")}</p>
+            </div>
+            <div class="nat-kpi">
+              <p class="nat-kpi-label">${escapeHtml(f("localIp"))}</p>
+              <p class="nat-kpi-value">${renderLocalIP(data)}</p>
+            </div>
+            <div class="nat-kpi">
+              <p class="nat-kpi-label">${escapeHtml(f("selectedCandidate"))}</p>
+              <p class="nat-kpi-value">${escapeHtml(localizedCandidateType(data.selected_candidate_type || "")) || "-"}</p>
+            </div>
+          </div>
+
+          <div class="nat-detail-grid">
+            <div class="nat-detail-card">
+              <p class="nat-detail-title">${escapeHtml(detectTitle)}</p>
+              <ul class="nat-list">
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("method"))}</span><span class="nat-item-value">${escapeHtml(localizedMethod(data.method || "")) || "-"}</span></li>
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("gatheringState"))}</span><span class="nat-item-value">${escapeHtml(localizedGatheringState(data.gathering_state || "")) || "-"}</span></li>
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("connectionMode"))}</span><span class="nat-item-value">${escapeHtml(localizedConnectionMode(data.connection_mode || "")) || "-"}</span></li>
+              </ul>
+            </div>
+            <div class="nat-detail-card">
+              <p class="nat-detail-title">${escapeHtml(abilityTitle)}</p>
+              <ul class="nat-list">
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("relayAvailable"))}</span><span class="nat-item-value">${boolValue(data.relay_available)}</span></li>
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("directAvailable"))}</span><span class="nat-item-value">${boolValue(data.direct_available)}</span></li>
+                <li class="nat-item"><span class="nat-item-key">${escapeHtml(f("hasNat"))}</span><span class="nat-item-value">${renderNatPresence(data.has_nat)}</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="compat">${compatibility}</div>
+        </div>
+      `;
+    }
+
+    async function queryIP() {
+      const q = document.getElementById("queryInput").value.trim();
+      if (!q) return;
+
+      document.getElementById("ipResult").textContent = t("querying");
+      const resp = await fetch("/api/ip?q=" + encodeURIComponent(q) + "&lang=" + ui.getLang());
+      const data = await resp.json();
+      if (!resp.ok) {
+        document.getElementById("ipResult").innerHTML = `<span class="danger">${escapeHtml(data.error || t("queryFailed"))}</span>`;
+        return;
+      }
+      renderIPResult(data);
+    }
+
+    async function fetchConfig() {
+      return getJSON("/api/nat/browser-config");
+    }
+
+    function parseCandidate(candidateStr) {
+      const parts = candidateStr.trim().split(/\s+/);
+      const result = {
+        candidate: candidateStr,
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+
+      if (parts.length >= 8) {
+        result.foundation = parts[0].replace("candidate:", "");
+        result.component = parts[1];
+        result.protocol = (parts[2] || "").toLowerCase();
+        result.address = parts[4] || "";
+        result.port = parseInt(parts[5], 10) || 0;
+
+        const typIndex = parts.indexOf("typ");
+        if (typIndex > -1 && parts[typIndex + 1]) result.type = parts[typIndex + 1];
+
+        const raddrIndex = parts.indexOf("raddr");
+        if (raddrIndex > -1 && parts[raddrIndex + 1]) result.related_address = parts[raddrIndex + 1];
+
+        const rportIndex = parts.indexOf("rport");
+        if (rportIndex > -1 && parts[rportIndex + 1]) result.related_port = parseInt(parts[rportIndex + 1], 10) || 0;
+      }
+
+      return result;
+    }
+
+    function emptyCandidate() {
+      return {
+        candidate: "",
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+    }
+
+    function statsCandidateToJSON(candidate) {
+      if (!candidate) return emptyCandidate();
+      return {
+        candidate: candidate.candidateType || "",
+        foundation: candidate.foundation || "",
+        component: candidate.component || "",
+        protocol: (candidate.protocol || "").toLowerCase(),
+        address: candidate.address || candidate.ip || "",
+        port: candidate.port || 0,
+        type: candidate.candidateType || "",
+        related_address: candidate.relatedAddress || "",
+        related_port: candidate.relatedPort || 0
+      };
+    }
+
+    function extractSelectedPair(stats) {
+      let pair = null;
+      stats.forEach((report) => {
+        if (report && report.type === "candidate-pair" && (report.selected || report.nominated || report.state === "succeeded")) {
+          if (!pair || report.selected) pair = report;
+        }
+      });
+      if (!pair) return null;
+      return {
+        local: stats.get(pair.localCandidateId) || null,
+        remote: stats.get(pair.remoteCandidateId) || null
+      };
+    }
+
+    function buildProbeLabel(probe, index) {
+      if (probe && probe.label) return probe.label;
+      if (probe && Array.isArray(probe.urls) && probe.urls[0]) return probe.urls[0];
+      return "probe-" + String(index + 1);
+    }
+
+    async function runIceProbe(iceServers, label, onCandidate) {
+      const candidates = [];
+      const iceErrors = [];
+      const seen = new Set();
+      const pc = new RTCPeerConnection({
+        iceServers: iceServers || [],
+        iceCandidatePoolSize: 0
+      });
+
+      pc.createDataChannel("nat-test");
+
+      let gatheringIdleTimer = null;
+      let resolveGathering = null;
+
+      function rememberCandidate(candidateStr) {
+        const parsed = parseCandidate(candidateStr);
+        parsed.source = "browser";
+        const key = JSON.stringify(parsed);
+        if (!seen.has(key)) {
+          seen.add(key);
+          candidates.push(parsed);
+          return true;
+        }
+        return false;
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && event.candidate.candidate) {
+          if (rememberCandidate(event.candidate.candidate)) {
+            if (onCandidate) onCandidate(label, candidates.slice());
+          }
+          if (resolveGathering) {
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            gatheringIdleTimer = setTimeout(resolveGathering, 2500);
+          }
+        }
+      };
+
+      pc.onicecandidateerror = (event) => {
+        iceErrors.push({
+          source: "browser",
+          url: event.url || "",
+          address: event.address || "",
+          port: event.port || 0,
+          error_code: event.errorCode || 0,
+          error_text: event.errorText || ""
+        });
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+
+      await new Promise((resolve) => {
+        resolveGathering = resolve;
+        const timeout = setTimeout(resolve, 15000);
+        pc.onicegatheringstatechange = () => {
+          if (pc.iceGatheringState === "complete") {
+            clearTimeout(timeout);
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            resolve();
+          }
+        };
+      });
+      resolveGathering = null;
+
+      const report = {
+        label,
+        urls: (iceServers || []).flatMap((server) => Array.isArray(server.urls) ? server.urls : []),
+        candidates,
+        ice_errors: iceErrors,
+        gathering_state: pc.iceGatheringState || "",
+        ice_connection_state: pc.iceConnectionState || "",
+        connection_state: pc.connectionState || "",
+        selected_candidate_type: "",
+        selected_local_candidate: emptyCandidate(),
+        selected_remote_candidate: emptyCandidate()
+      };
+
+      pc.close();
+      return report;
+    }
+
+    async function detectBrowserNAT(currentIP) {
+      document.getElementById("natResult").textContent = t("detecting");
+      document.getElementById("candidates").textContent = t("collectingIce");
+
+      const cfg = await fetchConfig();
+      const probeDefs = Array.isArray(cfg.stun_probes) && cfg.stun_probes.length ? cfg.stun_probes : [{ label: "default", urls: [] }];
+      const probes = [];
+      const allCandidates = [];
+      const allSeen = new Set();
+
+      function updateCandidateView() {
+        document.getElementById("candidates").textContent = JSON.stringify({ probes, candidates: allCandidates }, null, 2);
+      }
+
+      if (probeDefs.length > 1) {
+        const combinedURLs = probeDefs.flatMap((probeDef) => Array.isArray(probeDef.urls) ? probeDef.urls : []);
+        if (combinedURLs.length > 1) {
+          const combinedProbe = await runIceProbe(
+            [{ urls: combinedURLs }],
+            "combined-stun",
+            function (_, currentCandidates) {
+              currentCandidates.forEach((candidate) => {
+                const key = JSON.stringify(candidate);
+                if (!allSeen.has(key)) {
+                  allSeen.add(key);
+                  allCandidates.push(candidate);
+                }
+              });
+              updateCandidateView();
+            }
+          );
+          probes.push(combinedProbe);
+          combinedProbe.candidates.forEach((candidate) => {
+            const key = JSON.stringify(candidate);
+            if (!allSeen.has(key)) {
+              allSeen.add(key);
+              allCandidates.push(candidate);
+            }
+          });
+          updateCandidateView();
+        }
+      }
+
+      for (let i = 0; i < probeDefs.length; i += 1) {
+        const probeDef = probeDefs[i] || {};
+        const label = buildProbeLabel(probeDef, i);
+        const report = await runIceProbe(
+          [{ urls: Array.isArray(probeDef.urls) ? probeDef.urls : [] }],
+          label,
+          function (_, currentCandidates) {
+            currentCandidates.forEach((candidate) => {
+              const key = JSON.stringify(candidate);
+              if (!allSeen.has(key)) {
+                allSeen.add(key);
+                allCandidates.push(candidate);
+              }
+            });
+            updateCandidateView();
+          }
+        );
+        probes.push(report);
+        report.candidates.forEach((candidate) => {
+          const key = JSON.stringify(candidate);
+          if (!allSeen.has(key)) {
+            allSeen.add(key);
+            allCandidates.push(candidate);
+          }
+        });
+        updateCandidateView();
+      }
+
+      const primaryProbe = probes[0] || null;
+      const report = {
+        candidates: allCandidates,
+        probes: probes,
+        gathering_state: primaryProbe ? primaryProbe.gathering_state : "",
+        ice_connection_state: primaryProbe ? primaryProbe.ice_connection_state : "",
+        connection_state: primaryProbe ? primaryProbe.connection_state : "",
+        selected_candidate_type: primaryProbe ? primaryProbe.selected_candidate_type : "",
+        selected_local_candidate: primaryProbe ? primaryProbe.selected_local_candidate : emptyCandidate(),
+        selected_remote_candidate: primaryProbe ? primaryProbe.selected_remote_candidate : emptyCandidate()
+      };
+
+      const result = await getJSON("/api/nat/browser-report?lang=" + ui.getLang(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_agent: navigator.userAgent,
+          http_public_ip: currentIP || "",
+          candidates: report.candidates,
+          probes: report.probes,
+          gathering_state: report.gathering_state,
+          ice_connection_state: report.ice_connection_state,
+          connection_state: report.connection_state,
+          selected_candidate_type: report.selected_candidate_type,
+          selected_local_candidate: report.selected_local_candidate,
+          selected_remote_candidate: report.selected_remote_candidate
+        })
+      });
+
+      document.getElementById("candidates").textContent = JSON.stringify(report, null, 2);
+
+      renderNATResult(result);
+    }
+
+    async function startNATDetection() {
+      try {
+        const myip = await getJSON("/api/myip");
+        const currentIP = myip && myip.ip ? myip.ip : "";
+        await detectBrowserNAT(currentIP);
+      } catch (err) {
+        document.getElementById("natResult").innerHTML = `<span class="danger">${escapeHtml(err.message || t("natFailed"))}</span>`;
+        document.getElementById("candidates").textContent = `${t("natFailed")}: ${err.message || ""}`;
+      }
+    }
+
+    function rerenderWithLanguage() {
+      const ipHasTable = document.querySelector("#ipResult table");
+      const natHasData = document.querySelector("#natResult .nat-panel") || document.querySelector("#natResult table");
+      if (ipHasTable) queryIP();
+      if (natHasData) startNATDetection();
+    }
+
+    document.getElementById("queryBtn").addEventListener("click", queryIP);
+    document.getElementById("natBtn").addEventListener("click", startNATDetection);
+    const copyCandidatesBtn = document.getElementById("copyCandidatesBtn");
+    if (copyCandidatesBtn) {
+      copyCandidatesBtn.addEventListener("click", copyCandidates);
+    }
+
+    ui.bindControls({ onLanguageChanged: rerenderWithLanguage });
+    ui.applyI18n();
+    if (window.AppMobileNav && window.AppMobileNav.init) {
+      window.AppMobileNav.init({
+        toggleId: "menuToggleBtn",
+        menuId: "toolbar",
+        mediaQuery: "(max-width: 980px)",
+        openClass: "is-open",
+        linkSelector: "a.btn"
+      });
+    }
+
+    queryIP();
+  </script>
+</body>
+</html>

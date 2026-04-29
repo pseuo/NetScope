@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAT 类型检测</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --text: #0f172a;
+      --muted: #5b6475;
+      --card: #ffffff;
+      --line: #e2e8f0;
+      --brand: #0b6bcb;
+      --brand-soft: #e8f2ff;
+      --good: #15803d;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --radius: 14px;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --font: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% -10%, #dbeafe 0, rgba(219, 234, 254, 0) 32%),
+        radial-gradient(circle at 90% -20%, #fef3c7 0, rgba(254, 243, 199, 0) 30%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+
+    .hero {
+      background: linear-gradient(120deg, #0f4fa8 0%, #0b6bcb 58%, #2c84df 100%);
+      color: #fff;
+      border-radius: calc(var(--radius) + 4px);
+      padding: 22px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.92);
+      line-height: 1.6;
+      font-size: 15px;
+      max-width: 840px;
+    }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .link-btn {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .primary {
+      background: #fff;
+      color: #0b4f96;
+      font-weight: 600;
+    }
+
+    .subtle {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: #1e293b;
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title-row h2 {
+      margin: 0;
+    }
+
+    .copy-btn {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 8px 13px;
+      font-size: 13px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 90%);
+    }
+
+    .nat-badge {
+      width: 98px;
+      height: 98px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      font-weight: 700;
+      color: #0b4f96;
+      background: var(--brand-soft);
+      border: 4px solid #c8dcff;
+    }
+
+    .nat-name {
+      font-size: 22px;
+      margin: 0 0 4px;
+      color: #0f172a;
+    }
+
+    .nat-desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .kv {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .kv td {
+      border-bottom: 1px dashed var(--line);
+      padding: 8px 4px;
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    .kv td:first-child {
+      width: 150px;
+      color: #64748b;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 18px;
+      border: 1px solid transparent;
+      margin-right: 8px;
+      margin-bottom: 4px;
+    }
+
+    .good { color: var(--good); border-color: #bbf7d0; background: #f0fdf4; }
+    .warn { color: var(--warn); border-color: #fde68a; background: #fffbeb; }
+    .bad { color: var(--bad); border-color: #fecaca; background: #fef2f2; }
+    .info { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+
+    .compat {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .compat-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+      background: #fafcff;
+    }
+
+    .compat-item .score {
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: #64748b;
+    }
+
+    .compat-item .name {
+      font-size: 13px;
+      color: #334155;
+    }
+
+    .explain-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .type-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .type-card h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      color: #1e293b;
+    }
+
+    .type-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #4b5563;
+    }
+
+    pre {
+      margin: 0;
+      border-radius: 10px;
+      background: #0f172a;
+      color: #dbeafe;
+      padding: 12px;
+      min-height: 160px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .grid,
+      .split,
+      .explain-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .compat {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .nat-badge {
+        width: 84px;
+        height: 84px;
+        font-size: 26px;
+      }
+
+      .card-title-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>NAT 类型检测</h1>
+      <p>
+        自动采集浏览器 WebRTC ICE 数据，分析 NAT 类型、IPv4/IPv6 可用性和公网映射信息，并给出常见应用场景兼容建议。
+      </p>
+      <div class="actions">
+        <button class="primary" id="startBtn">开始检测</button>
+        <button class="subtle" id="retryBtn">重新检测</button>
+        <a class="link-btn subtle" href="/">NetScope</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>检测结果</h2>
+        <div class="summary">
+          <div class="nat-badge" id="natCode">NAT?</div>
+          <div>
+            <p class="nat-name" id="natName">等待检测</p>
+            <p class="nat-desc" id="natDesc">点击“开始检测”以执行 NAT 分析。</p>
+          </div>
+        </div>
+        <table class="kv" id="natTable">
+          <tr><td>公网 IP</td><td>-</td></tr>
+          <tr><td>公网端口</td><td>-</td></tr>
+          <tr><td>本地 IP</td><td>-</td></tr>
+          <tr><td>置信度</td><td>-</td></tr>
+          <tr><td>检测方法</td><td>-</td></tr>
+        </table>
+        <div class="compat" id="compatibility"></div>
+      </div>
+
+      <div class="card">
+        <h2>连接环境</h2>
+        <table class="kv" id="connTable">
+          <tr><td>当前连接 IP</td><td>检测中...</td></tr>
+          <tr><td>IP 版本</td><td>-</td></tr>
+          <tr><td>IPv4 可用</td><td>-</td></tr>
+          <tr><td>IPv6 可用</td><td>-</td></tr>
+          <tr><td>网络信息</td><td>-</td></tr>
+        </table>
+        <p class="muted" id="status">状态：准备就绪</p>
+      </div>
+    </section>
+
+    <section class="split">
+      <div class="card">
+        <h2>NAT 类型说明</h2>
+        <p class="muted">
+          网络地址转换（NAT）是现代网络连接互联网的基础。它会在不同网络之间转发数据包时转换源或目的 IP 和端口，让本地网络中的多个设备共享一个公网 IP 地址，节省 IPv4 资源，并在内部设备与外部网络之间增加一层隔离。
+        </p>
+        <p class="muted">
+          不同 NAT 类型主要影响外部设备能否主动连回你的设备，以及 P2P 打洞、联机游戏、视频通话、远程访问等场景的成功率。一般来说，限制越少，直连成功率越高；限制越强，越可能需要服务器中继。
+        </p>
+        <div class="explain-grid">
+          <div class="type-card">
+            <h3>NAT0 / Direct（无 NAT / 直连）</h3>
+            <p>设备可直接使用公网地址通信，或已建立直连路径，外部连接限制最少，连通性通常最好。</p>
+          </div>
+          <div class="type-card">
+            <h3>Full Cone NAT（完全锥型 NAT）</h3>
+            <p>内网地址和端口映射到固定公网端口后，任意外部主机都可通过该映射回连，P2P 兼容性最好。</p>
+          </div>
+          <div class="type-card">
+            <h3>Restricted Cone NAT（地址受限锥型 NAT）</h3>
+            <p>公网端口映射相对固定，但只允许内网设备访问过的外部 IP 回连，兼容性较好。</p>
+          </div>
+          <div class="type-card">
+            <h3>Port Restricted NAT（端口受限锥型 NAT）</h3>
+            <p>只允许内网设备访问过的外部 IP 和端口组合回连，P2P 成功率低于地址受限锥型 NAT。</p>
+          </div>
+          <div class="type-card">
+            <h3>Symmetric NAT（对称型 NAT）</h3>
+            <p>每个目标独立映射端口，P2P 打洞困难，常需中继。</p>
+          </div>
+          <div class="type-card">
+            <h3>检测结果准确吗？</h3>
+            <p>本工具基于浏览器 WebRTC ICE 候选和 STUN 探测结果进行分析，通常能较准确地反映当前网络路径的 NAT 类型。但受浏览器安全策略、候选信息暴露范围和网络环境影响，某些情况下可能无法完全区分 Restricted Cone 与 Port Restricted Cone。如需更精确的检测，建议配合专业 STUN 客户端或网络诊断工具交叉验证。</p>
+          </div>
+          <div class="type-card">
+            <h3>这个检测会收集我的数据吗？</h3>
+            <p>不会。检测过程主要在您的浏览器本地完成，STUN 服务器仅用于返回当前网络的公网 IP 和端口映射信息。本站不会记录、存储或额外传输您的个人网络信息。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h2>ICE 候选详情</h2>
+          <button id="copyCandidatesBtn" class="copy-btn" type="button">复制</button>
+        </div>
+        <pre id="candidates">尚未开始检测</pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function esc(s) {
+      if (s === undefined || s === null) return "";
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    const IP_CHECK_TIMEOUT_MS = 2500;
+
+    async function getJSON(url, options) {
+      const resp = await fetch(url, options);
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "request failed");
+      }
+      return data;
+    }
+
+    async function getJSONWithTimeout(url, options, timeoutMS) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMS);
+      try {
+        return await getJSON(url, Object.assign({}, options, { signal: controller.signal }));
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    async function getOptionalJSON(url, expectedVersion) {
+      try {
+        if (window.location.protocol === "https:" && /^http:\/\//i.test(url)) {
+          return { ip: "", ip_version: "", available: false };
+        }
+        const data = await getJSONWithTimeout(url, { cache: "no-store" }, IP_CHECK_TIMEOUT_MS);
+        if (expectedVersion === 6 && Object.prototype.hasOwnProperty.call(data, "ipv6")) {
+          if (!data.ipv6) return { ip: "", ip_version: "IPv6", available: false };
+          data.ip = String(data.ipv6);
+          data.ip_version = "IPv6";
+          data.available = data.is_ipv6 !== false;
+        }
+        if (expectedVersion === 4 && Object.prototype.hasOwnProperty.call(data, "ipv4")) {
+          if (!data.ipv4) return { ip: "", ip_version: "IPv4", available: false };
+          data.ip = String(data.ipv4);
+          data.ip_version = "IPv4";
+          data.available = data.is_ipv4 !== false;
+        }
+        const actualVersion = data.version === 4 || data.is_ipv4 === true || data.ip_version === "IPv4" || (data.ip && data.ip.indexOf(":") === -1)
+          ? 4
+          : data.version === 6 || data.is_ipv6 === true || data.ip_version === "IPv6" || (data.ip && data.ip.indexOf(":") !== -1) ? 6 : 0;
+        if (typeof data.available !== "boolean") data.available = actualVersion > 0;
+        if (expectedVersion) data.available = data.available === true && actualVersion === expectedVersion;
+        if (expectedVersion && !data.available) data.ip = "";
+        if (!data.ip_version) {
+          if (actualVersion === 4) data.ip_version = "IPv4";
+          if (actualVersion === 6) data.ip_version = "IPv6";
+        }
+        return data;
+      } catch (err) {
+        return { ip: "", ip_version: "", available: false };
+      }
+    }
+
+    function checkIPVersion(config, version) {
+      const key = version.toLowerCase();
+      if (key === "ipv6" && Array.isArray(config.ipv6_urls) && config.ipv6_urls.length) {
+        return config.ipv6_urls.reduce((promise, url) => {
+          return promise.then(result => result && result.available ? result : getOptionalJSON(url, 6));
+        }, Promise.resolve(null));
+      }
+      const checkURL = config[key + "_url"];
+      if (checkURL) return getOptionalJSON(checkURL, version === "IPv6" ? 6 : 4);
+      return getOptionalJSON("/api/my-" + key, version === "IPv6" ? 6 : 4);
+    }
+
+    async function loadIPCheckConfig() {
+      try {
+        return await getJSON("/api/ip-check-config", { cache: "no-store" });
+      } catch (err) {
+        return {};
+      }
+    }
+
+    function setCopyButtonText(text) {
+      const button = document.getElementById("copyCandidatesBtn");
+      if (button) button.textContent = text;
+    }
+
+    async function writeClipboardText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (!copied) throw new Error("copy failed");
+    }
+
+    async function copyCandidates() {
+      const button = document.getElementById("copyCandidatesBtn");
+      const candidates = document.getElementById("candidates");
+      if (!button || !candidates) return;
+      const defaultLabel = "复制";
+      try {
+        await writeClipboardText(candidates.textContent || "");
+        setCopyButtonText("已复制");
+      } catch (err) {
+        setCopyButtonText("复制失败");
+      }
+      window.setTimeout(function () {
+        setCopyButtonText(defaultLabel);
+      }, 1600);
+    }
+
+    function parseCandidate(candidateStr) {
+      const parts = candidateStr.trim().split(/\s+/);
+      const result = {
+        candidate: candidateStr,
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+
+      if (parts.length >= 8) {
+        result.foundation = (parts[0] || "").replace("candidate:", "");
+        result.component = parts[1] || "";
+        result.protocol = (parts[2] || "").toLowerCase();
+        result.address = parts[4] || "";
+        result.port = parseInt(parts[5], 10) || 0;
+
+        const typIndex = parts.indexOf("typ");
+        if (typIndex > -1 && parts[typIndex + 1]) {
+          result.type = parts[typIndex + 1];
+        }
+
+        const raddrIndex = parts.indexOf("raddr");
+        if (raddrIndex > -1 && parts[raddrIndex + 1]) {
+          result.related_address = parts[raddrIndex + 1];
+        }
+
+        const rportIndex = parts.indexOf("rport");
+        if (rportIndex > -1 && parts[rportIndex + 1]) {
+          result.related_port = parseInt(parts[rportIndex + 1], 10) || 0;
+        }
+      }
+      return result;
+    }
+
+    function emptyCandidate() {
+      return {
+        candidate: "",
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+    }
+
+    function statsCandidateToJSON(candidate) {
+      if (!candidate) return emptyCandidate();
+      return {
+        candidate: candidate.candidateType || "",
+        foundation: candidate.foundation || "",
+        component: candidate.component || "",
+        protocol: (candidate.protocol || "").toLowerCase(),
+        address: candidate.address || candidate.ip || "",
+        port: candidate.port || 0,
+        type: candidate.candidateType || "",
+        related_address: candidate.relatedAddress || "",
+        related_port: candidate.relatedPort || 0
+      };
+    }
+
+    function extractSelectedPair(stats) {
+      let pair = null;
+      stats.forEach(function (report) {
+        if (report && report.type === "candidate-pair" && (report.selected || report.nominated || report.state === "succeeded")) {
+          if (!pair || report.selected) pair = report;
+        }
+      });
+      if (!pair) return null;
+      return {
+        local: stats.get(pair.localCandidateId) || null,
+        remote: stats.get(pair.remoteCandidateId) || null
+      };
+    }
+
+    function natClass(score) {
+      if (score === "Best" || score === "Good") return "good";
+      if (score === "Moderate") return "warn";
+      return "bad";
+    }
+
+    function renderHasNAT(value) {
+      if (value === null || value === undefined) return "<span class='tag warn'>未知</span>";
+      return value ? "<span class='tag warn'>是</span>" : "<span class='tag good'>否</span>";
+    }
+
+    function renderLocalIP(data) {
+      if (data.local_ip) return esc(data.local_ip);
+      if (data.type_code === "webrtc_srflx_unavailable" || data.method === "webrtc-ice-multi-stun") {
+        return "<span class='tag warn'>浏览器已隐藏（mDNS）</span>";
+      }
+      return "-";
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").textContent = "状态：" + text;
+    }
+
+    function natLabel(data) {
+      const code = data.type_code || "unknown";
+      if (code === "open") return "NAT0";
+      if (code === "direct") return "NAT0";
+      if (code === "full_cone") return "NAT1";
+      if (code === "restricted_cone") return "NAT2";
+      if (code === "port_restricted") return "NAT2";
+      if (code === "cone") return "NAT2";
+      if (code === "symmetric") return "NAT3";
+      if (code === "relay") return "NAT3";
+      if (code === "udp_blocked") return "NAT3";
+      if (code === "udp_restricted") return "NAT3";
+      if (code === "webrtc_srflx_unavailable") return "NAT?";
+      return "NAT?";
+    }
+
+    function buildCompatibility(typeCode) {
+      const map = {
+        open: [
+          ["Best", "在线游戏"],
+          ["Best", "P2P 下载"],
+          ["Best", "视频通话"],
+          ["Best", "远程访问"]
+        ],
+        direct: [
+          ["Best", "在线游戏"],
+          ["Best", "P2P 下载"],
+          ["Best", "视频通话"],
+          ["Good", "远程访问"]
+        ],
+        full_cone: [
+          ["Best", "在线游戏"],
+          ["Good", "P2P 下载"],
+          ["Best", "视频通话"],
+          ["Good", "远程访问"]
+        ],
+        restricted_cone: [
+          ["Good", "在线游戏"],
+          ["Good", "P2P 下载"],
+          ["Best", "视频通话"],
+          ["Moderate", "远程访问"]
+        ],
+        port_restricted: [
+          ["Moderate", "在线游戏"],
+          ["Moderate", "P2P 下载"],
+          ["Good", "视频通话"],
+          ["Limited", "远程访问"]
+        ],
+        cone: [
+          ["Good", "在线游戏"],
+          ["Good", "P2P 下载"],
+          ["Best", "视频通话"],
+          ["Good", "远程访问"]
+        ],
+        symmetric: [
+          ["Limited", "在线游戏"],
+          ["Limited", "P2P 下载"],
+          ["Good", "视频通话"],
+          ["Limited", "远程访问"]
+        ],
+        udp_blocked: [
+          ["Limited", "在线游戏"],
+          ["Limited", "P2P 下载"],
+          ["Moderate", "视频通话"],
+          ["Limited", "远程访问"]
+        ],
+        relay: [
+          ["Moderate", "在线游戏"],
+          ["Limited", "P2P 下载"],
+          ["Good", "视频通话"],
+          ["Good", "远程访问"]
+        ],
+        udp_restricted: [
+          ["Moderate", "在线游戏"],
+          ["Moderate", "P2P 下载"],
+          ["Good", "视频通话"],
+          ["Limited", "远程访问"]
+        ],
+        webrtc_srflx_unavailable: [
+          ["无法判断", "在线游戏"],
+          ["无法判断", "P2P 下载"],
+          ["无法判断", "视频通话"],
+          ["无法判断", "远程访问"]
+        ]
+      };
+      return map[typeCode] || [
+        ["无法判断", "在线游戏"],
+        ["无法判断", "P2P 下载"],
+        ["无法判断", "视频通话"],
+        ["无法判断", "远程访问"]
+      ];
+    }
+
+    function buildProbeLabel(probe, index) {
+      if (probe && probe.label) return probe.label;
+      if (probe && Array.isArray(probe.urls) && probe.urls[0]) return probe.urls[0];
+      return "probe-" + String(index + 1);
+    }
+
+    async function runIceProbe(iceServers, label, onCandidate) {
+      const candidates = [];
+      const iceErrors = [];
+      const seen = new Set();
+      const pc = new RTCPeerConnection({
+        iceServers: iceServers || [],
+        iceCandidatePoolSize: 0
+      });
+
+      pc.createDataChannel("nat-test");
+
+      let gatheringIdleTimer = null;
+      let resolveGathering = null;
+      function rememberCandidate(candidateStr) {
+        const parsed = parseCandidate(candidateStr);
+        parsed.source = "browser";
+        const key = JSON.stringify(parsed);
+        if (!seen.has(key)) {
+          seen.add(key);
+          candidates.push(parsed);
+          return true;
+        }
+        return false;
+      }
+
+      pc.onicecandidate = function (event) {
+        if (event.candidate && event.candidate.candidate) {
+          if (rememberCandidate(event.candidate.candidate)) {
+            if (onCandidate) onCandidate(label, candidates.slice());
+          }
+          if (resolveGathering) {
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            gatheringIdleTimer = setTimeout(resolveGathering, 2500);
+          }
+        }
+      };
+
+      pc.onicecandidateerror = function (event) {
+        iceErrors.push({
+          source: "browser",
+          url: event.url || "",
+          address: event.address || "",
+          port: event.port || 0,
+          error_code: event.errorCode || 0,
+          error_text: event.errorText || ""
+        });
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+
+      await new Promise(function (resolve) {
+        resolveGathering = resolve;
+        const timeout = setTimeout(resolve, 15000);
+        pc.onicegatheringstatechange = function () {
+          if (pc.iceGatheringState === "complete") {
+            clearTimeout(timeout);
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            resolve();
+          }
+        };
+      });
+      resolveGathering = null;
+
+      const report = {
+        label: label,
+        urls: (iceServers || []).flatMap(function (server) {
+          return Array.isArray(server.urls) ? server.urls : [];
+        }),
+        candidates: candidates,
+        ice_errors: iceErrors,
+        gathering_state: pc.iceGatheringState || "",
+        ice_connection_state: pc.iceConnectionState || "",
+        connection_state: pc.connectionState || "",
+        selected_candidate_type: "",
+        selected_local_candidate: emptyCandidate(),
+        selected_remote_candidate: emptyCandidate()
+      };
+
+      pc.close();
+      return report;
+    }
+
+    function renderNAT(data) {
+      const code = natLabel(data);
+      document.getElementById("natCode").textContent = code;
+      document.getElementById("natName").textContent = (data.type_name_zh || "未知") + " / " + (data.type_name || "Unknown");
+      document.getElementById("natDesc").textContent = data.description || "无可用描述";
+
+      const natTable = document.getElementById("natTable");
+      natTable.innerHTML = "" +
+        "<tr><td>公网 IP</td><td>" + esc(data.public_ip || "-") + "</td></tr>" +
+        "<tr><td>公网端口</td><td>" + esc(data.public_port || "-") + "</td></tr>" +
+        "<tr><td>本地 IP</td><td>" + renderLocalIP(data) + "</td></tr>" +
+        "<tr><td>置信度</td><td><span class='tag info'>" + esc(data.confidence || "-") + "</span></td></tr>" +
+        "<tr><td>检测方法</td><td>" + esc(data.method || "-") + "</td></tr>" +
+        "<tr><td>连接模式</td><td>" + esc(data.connection_mode || "-") + "</td></tr>" +
+        "<tr><td>选中候选类型</td><td>" + esc(data.selected_candidate_type || "-") + "</td></tr>" +
+        "<tr><td>Gathering 状态</td><td>" + esc(data.gathering_state || "-") + "</td></tr>" +
+        "<tr><td>Relay 可用</td><td>" + (data.relay_available ? "<span class='tag good'>是</span>" : "<span class='tag bad'>否</span>") + "</td></tr>" +
+        "<tr><td>直连候选可用</td><td>" + (data.direct_available ? "<span class='tag good'>是</span>" : "<span class='tag bad'>否</span>") + "</td></tr>" +
+        "<tr><td>是否存在 NAT</td><td>" + renderHasNAT(data.has_nat) + "</td></tr>";
+
+      const items = buildCompatibility(data.type_code || "");
+      const html = items
+        .map(function (item) {
+          return "<div class='compat-item'><div class='score'><span class='tag " + natClass(item[0]) + "'>" + item[0] + "</span></div><div class='name'>" + item[1] + "</div></div>";
+        })
+        .join("");
+      document.getElementById("compatibility").innerHTML = html;
+    }
+
+    function renderConn(myip, ipv4, ipv6, network) {
+      const provider = [network.source && network.source.geo_source, network.source && network.source.security_source]
+        .filter(Boolean)
+        .join(" / ");
+      document.getElementById("connTable").innerHTML = "" +
+        "<tr><td>当前连接 IP</td><td>" + esc(myip.ip || "") + "</td></tr>" +
+        "<tr><td>IP 版本</td><td>" + esc(myip.ip_version || "") + "</td></tr>" +
+        "<tr><td>IPv4 可用</td><td>" + (ipv4.available ? "<span class='tag good'>可用</span>" : "<span class='tag bad'>不可用</span>") + " " + esc(ipv4.ip || "") + "</td></tr>" +
+        "<tr><td>IPv6 可用</td><td>" + (ipv6.available ? "<span class='tag good'>可用</span>" : "<span class='tag bad'>不可用</span>") + " " + esc(ipv6.ip || "") + "</td></tr>" +
+        "<tr><td>网络信息</td><td>" + esc(network.network && network.network.isp || "") + " / " + esc(network.location && network.location.country || "") + " / " + esc(provider || "-") + "</td></tr>";
+    }
+
+    async function collectCandidates() {
+      const cfg = await getJSON("/api/nat/browser-config");
+      const pre = document.getElementById("candidates");
+      const probeDefs = Array.isArray(cfg.stun_probes) && cfg.stun_probes.length ? cfg.stun_probes : [{ label: "default", urls: [] }];
+      const probes = [];
+      const allCandidates = [];
+      const allSeen = new Set();
+
+      function updateView() {
+        pre.textContent = JSON.stringify({ probes: probes, candidates: allCandidates }, null, 2);
+      }
+
+      if (probeDefs.length > 1) {
+        const combinedURLs = probeDefs.flatMap(function (probeDef) {
+          return Array.isArray(probeDef.urls) ? probeDef.urls : [];
+        });
+        if (combinedURLs.length > 1) {
+          const combinedProbe = await runIceProbe(
+            [{ urls: combinedURLs }],
+            "combined-stun",
+            function (_, currentCandidates) {
+              currentCandidates.forEach(function (candidate) {
+                const key = JSON.stringify(candidate);
+                if (!allSeen.has(key)) {
+                  allSeen.add(key);
+                  allCandidates.push(candidate);
+                }
+              });
+              updateView();
+            }
+          );
+          probes.push(combinedProbe);
+          combinedProbe.candidates.forEach(function (candidate) {
+            const key = JSON.stringify(candidate);
+            if (!allSeen.has(key)) {
+              allSeen.add(key);
+              allCandidates.push(candidate);
+            }
+          });
+          updateView();
+        }
+      }
+
+      for (let i = 0; i < probeDefs.length; i += 1) {
+        const probeDef = probeDefs[i] || {};
+        const label = buildProbeLabel(probeDef, i);
+        const probeReport = await runIceProbe(
+          [{ urls: Array.isArray(probeDef.urls) ? probeDef.urls : [] }],
+          label,
+          function (_, currentCandidates) {
+            currentCandidates.forEach(function (candidate) {
+              const key = JSON.stringify(candidate);
+              if (!allSeen.has(key)) {
+                allSeen.add(key);
+                allCandidates.push(candidate);
+              }
+            });
+            updateView();
+          }
+        );
+        probes.push(probeReport);
+        probeReport.candidates.forEach(function (candidate) {
+          const key = JSON.stringify(candidate);
+          if (!allSeen.has(key)) {
+            allSeen.add(key);
+            allCandidates.push(candidate);
+          }
+        });
+        updateView();
+      }
+
+      const primaryProbe = probes[0] || null;
+      const report = {
+        candidates: allCandidates,
+        probes: probes,
+        gathering_state: primaryProbe ? primaryProbe.gathering_state : "",
+        ice_connection_state: primaryProbe ? primaryProbe.ice_connection_state : "",
+        connection_state: primaryProbe ? primaryProbe.connection_state : "",
+        selected_candidate_type: primaryProbe ? primaryProbe.selected_candidate_type : "",
+        selected_local_candidate: primaryProbe ? primaryProbe.selected_local_candidate : emptyCandidate(),
+        selected_remote_candidate: primaryProbe ? primaryProbe.selected_remote_candidate : emptyCandidate()
+      };
+      return report;
+    }
+
+    async function runDetection() {
+      setStatus("正在获取网络信息...");
+      let currentIP = "";
+      try {
+        const base = await Promise.all([
+          getJSON("/api/myip"),
+          loadIPCheckConfig(),
+          getJSON("/api/my/network?lang=zh")
+        ]);
+        const checks = await Promise.all([
+          checkIPVersion(base[1], "IPv4"),
+          checkIPVersion(base[1], "IPv6")
+        ]);
+        currentIP = base[0] && base[0].ip ? base[0].ip : "";
+        renderConn(base[0], checks[0], checks[1], base[2]);
+      } catch (err) {
+        setStatus("基础网络信息获取失败: " + err.message);
+      }
+
+      setStatus("正在进行 WebRTC ICE 采集...");
+      try {
+        const startedAt = Date.now();
+        const report = await collectCandidates();
+        setStatus("正在分析 NAT 类型...");
+        document.getElementById("candidates").textContent = JSON.stringify(report, null, 2);
+
+        const nat = await getJSON("/api/nat/browser-report?lang=zh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_agent: navigator.userAgent,
+            http_public_ip: currentIP,
+            candidates: report.candidates,
+            probes: report.probes,
+            gathering_state: report.gathering_state,
+            ice_connection_state: report.ice_connection_state,
+            connection_state: report.connection_state,
+            selected_candidate_type: report.selected_candidate_type,
+            selected_local_candidate: report.selected_local_candidate,
+            selected_remote_candidate: report.selected_remote_candidate
+          })
+        });
+
+        renderNAT(nat);
+        const cost = ((Date.now() - startedAt) / 1000).toFixed(2);
+        setStatus("检测完成，用时 " + cost + " 秒");
+      } catch (err) {
+        setStatus("NAT 检测失败: " + err.message);
+      }
+    }
+
+    document.getElementById("startBtn").addEventListener("click", function () {
+      runDetection();
+    });
+
+    document.getElementById("retryBtn").addEventListener("click", function () {
+      runDetection();
+    });
+
+    const copyCandidatesBtn = document.getElementById("copyCandidatesBtn");
+    if (copyCandidatesBtn) {
+      copyCandidatesBtn.addEventListener("click", copyCandidates);
+    }
+
+    runDetection();
+  </script>
+</body>
+</html>

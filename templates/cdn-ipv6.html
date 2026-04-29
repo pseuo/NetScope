@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CDN IPv6 获取工具 - 检测 CDN IPv6 出口地址</title>
+  <meta name="description" content="通过支持 IPv6 的 CDN 检测当前访问者公网 IPv6 地址，支持自定义 CDN 检测接口、延迟测试和 JSON 输出。" />
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(15, 28, 49, .82);
+      --card: rgba(255, 255, 255, .06);
+      --text: #eef6ff;
+      --muted: #9eb2cc;
+      --line: rgba(184, 209, 242, .18);
+      --brand: #4dd4ff;
+      --brand2: #7c5cff;
+      --good: #67e8a5;
+      --bad: #ff8a9a;
+      --warn: #ffd37a;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .32);
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(820px 380px at 8% -10%, rgba(77, 212, 255, .24), transparent 58%),
+        radial-gradient(760px 360px at 100% 0%, rgba(124, 92, 255, .24), transparent 58%),
+        linear-gradient(160deg, #07111f, #0b1424 48%, #10182b);
+    }
+    .wrap { width: min(1080px, calc(100% - 28px)); margin: 18px auto 36px; }
+    .topbar, .hero, .card, .note { border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(14px); }
+    .topbar { position: sticky; top: 12px; z-index: 20; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 999px; }
+    .brand, .nav a { color: inherit; text-decoration: none; }
+    .brand { font-weight: 800; letter-spacing: .2px; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .nav a { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; color: var(--muted); background: rgba(255,255,255,.04); font-size: 13px; font-weight: 700; }
+    .nav a.active { color: #07111f; background: linear-gradient(135deg, var(--brand), #b8f2ff); border-color: transparent; }
+    .hero { margin-top: 14px; border-radius: 28px; padding: 28px; overflow: hidden; position: relative; }
+    .hero::after { content: ""; position: absolute; width: 260px; height: 260px; right: -70px; top: -80px; border-radius: 50%; background: linear-gradient(135deg, rgba(77,212,255,.22), rgba(124,92,255,.16)); filter: blur(4px); }
+    .eyebrow { color: var(--brand); text-transform: uppercase; letter-spacing: .1em; font-weight: 900; font-size: 12px; }
+    h1 { position: relative; margin: 8px 0 12px; max-width: 760px; font-size: clamp(32px, 5vw, 58px); line-height: 1.04; }
+    .hero p, .muted { color: var(--muted); line-height: 1.7; }
+    .hero p { position: relative; margin: 0; max-width: 780px; }
+    .grid { margin-top: 14px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 14px; }
+    .card, .note { border-radius: 22px; padding: 18px; }
+    .card h2, .card h3, .note h3 { margin: 0 0 12px; }
+    .form { display: grid; gap: 10px; }
+    label { color: var(--muted); font-size: 13px; font-weight: 800; }
+    .input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+    input { width: 100%; border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; color: var(--text); background: rgba(255,255,255,.07); font: inherit; outline: none; }
+    input:focus { border-color: rgba(77,212,255,.68); box-shadow: 0 0 0 4px rgba(77,212,255,.1); }
+    button, .btn { border: 0; border-radius: 999px; padding: 11px 15px; color: #06111f; background: linear-gradient(135deg, var(--brand), #b8f2ff); font: inherit; font-weight: 900; cursor: pointer; text-decoration: none; white-space: nowrap; }
+    .secondary { color: var(--text); background: rgba(255,255,255,.08); border: 1px solid var(--line); }
+    .result { display: grid; gap: 12px; }
+    .status { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 18px; padding: 14px; background: var(--card); }
+    .badge { display: inline-flex; padding: 6px 11px; border-radius: 999px; font-size: 13px; font-weight: 900; }
+    .checking { color: var(--warn); background: rgba(255,211,122,.12); }
+    .ok { color: var(--good); background: rgba(103,232,165,.13); }
+    .bad { color: var(--bad); background: rgba(255,138,154,.13); }
+    .ip { min-height: 64px; padding: 14px; border-radius: 18px; border: 1px dashed rgba(184,209,242,.26); background: rgba(0,0,0,.18); font: 700 20px/1.45 Consolas, "SFMono-Regular", monospace; overflow-wrap: anywhere; }
+    .kv { display: grid; gap: 8px; }
+    .kv div { display: grid; grid-template-columns: 130px 1fr; gap: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+    .kv span { color: var(--muted); }
+    pre { margin: 0; overflow: auto; white-space: pre-wrap; border-radius: 16px; padding: 14px; background: #020817; color: #dbeafe; font: 13px/1.55 Consolas, "SFMono-Regular", monospace; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .note { margin-top: 14px; }
+    .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .step { padding: 13px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+    .step strong { display: block; margin-bottom: 6px; }
+    .step p { margin: 0; color: var(--muted); line-height: 1.65; font-size: 14px; }
+    code { color: #dff7ff; font-family: Consolas, "SFMono-Regular", monospace; }
+    @media (max-width: 820px) {
+      .topbar { align-items: flex-start; border-radius: 22px; flex-direction: column; }
+      .grid, .steps { grid-template-columns: 1fr; }
+      .input-row { grid-template-columns: 1fr; }
+      .kv div { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a href="/" class="brand">IP Network Tools</a>
+      <nav class="nav">
+        <a href="/">NetScope</a>
+        <a href="/ipv6-test">IPv6 测试</a>
+        <a class="active" href="/cdn-ipv6">CDN IPv6</a>
+        <a href="/ip-look">IP 查询</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">CDN IPv6 Fetch</div>
+      <h1>通过支持 IPv6 的 CDN 获取公网 IPv6</h1>
+      <p>把一个开启 IPv6 的 CDN 域名指向本站，并使用它访问 <code>/api/my-ipv6</code>。页面会从该接口读取客户端 IP，判断本次连接是否真正走 IPv6。</p>
+    </section>
+
+    <main class="grid">
+      <section class="card">
+        <h2>检测地址</h2>
+        <div class="form">
+          <label for="endpoint">CDN IPv6 接口 URL</label>
+          <div class="input-row">
+            <input id="endpoint" type="text" placeholder="https://v6-a.example.com/api/my-ipv6, https://v6-b.example.com/api/my-ipv6" autocomplete="off" />
+            <button id="runBtn" type="button">获取 IPv6</button>
+          </div>
+          <p class="muted">可在环境变量 <code>IPV6_CHECK_URLS</code> 中用逗号配置两个地址，也兼容 <code>IPV6_CHECK_URL</code>。地址栏可使用 <code>?url=https://v6-a.example.com/api/my-ipv6,https://v6-b.example.com/api/my-ipv6</code>。</p>
+        </div>
+        <div class="actions">
+          <button id="sameOriginBtn" class="secondary" type="button">使用当前域名</button>
+          <button id="copyBtn" class="secondary" type="button">复制结果</button>
+        </div>
+      </section>
+
+      <section class="card result">
+        <div class="status">
+          <div>
+            <h3 id="title">等待检测</h3>
+            <div class="muted" id="desc">填写 CDN IPv6 接口后开始获取。</div>
+          </div>
+          <span id="badge" class="badge checking">待检测</span>
+        </div>
+        <div class="ip" id="ip">-</div>
+        <div class="kv">
+          <div><span>IP 版本</span><strong id="version">-</strong></div>
+          <div><span>请求延迟</span><strong id="latency">-</strong></div>
+          <div><span>检测接口</span><strong id="usedUrl">-</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <section class="note">
+      <h3>原始返回</h3>
+      <pre id="raw">-</pre>
+    </section>
+
+    <section class="note">
+      <h3>部署方式</h3>
+      <div class="steps">
+        <div class="step"><strong>1. CDN 开 IPv6</strong><p>在 CDN 控制台开启 IPv6 访问，并让域名回源到本站。</p></div>
+        <div class="step"><strong>2. 配置检测地址</strong><p>推荐设置 <code>IPV6_CHECK_URLS=https://域名A/api/my-ipv6,https://域名B/api/my-ipv6</code>。</p></div>
+        <div class="step"><strong>3. 页面获取</strong><p>访问本页，点击“获取 IPv6”，如果返回 IPv6 地址，说明 CDN IPv6 链路可用。</p></div>
+      </div>
+      <pre id="curlBox">curl "https://v6.example.com/api/my-ipv6"</pre>
+    </section>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const IP_CHECK_TIMEOUT_MS = 2500;
+
+    function pageOrigin() {
+      return window.location.origin || (window.location.protocol + "//" + window.location.host);
+    }
+
+    function detectVersion(ip) {
+      const value = String(ip || "").trim();
+      if (/^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$/.test(value)) return "IPv4";
+      if (value.includes(":")) return "IPv6";
+      return "未知";
+    }
+
+    function extractIP(raw, data) {
+      if (data && data.ip) return String(data.ip).trim();
+      const text = String(raw || "").trim();
+      const ipv6 = text.match(/[0-9a-f]{0,4}:[0-9a-f:.]+/i);
+      if (ipv6) return ipv6[0];
+      const ipv4 = text.match(/(?:\d{1,3}\.){3}\d{1,3}/);
+      return ipv4 ? ipv4[0] : text;
+    }
+
+    function responseVersion(data, ip) {
+      if (data && data.ip_version) return data.ip_version;
+      if (data && data.version === 6) return "IPv6";
+      if (data && data.version === 4) return "IPv4";
+      if (data && data.is_ipv6 === true) return "IPv6";
+      if (data && data.is_ipv4 === true) return "IPv4";
+      return detectVersion(ip);
+    }
+
+    function setStatus(kind, title, desc) {
+      const badge = $("badge");
+      badge.className = "badge " + kind;
+      badge.textContent = kind === "ok" ? "IPv6 可用" : (kind === "bad" ? "未获取到 IPv6" : "检测中");
+      $("title").textContent = title;
+      $("desc").textContent = desc;
+    }
+
+    function normalizeEndpoint(value) {
+      const trimmed = String(value || "").trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) return trimmed;
+      return "https://" + trimmed;
+    }
+
+    function parseEndpoints(value) {
+      const seen = new Set();
+      const urls = [];
+      String(value || "").split(/[\n,]+/).forEach(item => {
+        const url = normalizeEndpoint(item);
+        if (url && !seen.has(url)) {
+          seen.add(url);
+          urls.push(url);
+        }
+      });
+      return urls.slice(0, 2);
+    }
+
+    function formatEndpoints(urls) {
+      return urls.join(", ");
+    }
+
+    function updateCurl(url) {
+      $("curlBox").textContent = url ? "curl \"" + url + "\"" : "curl \"https://v6.example.com/api/my-ipv6\"";
+    }
+
+    async function fetchWithTimeout(url, options, timeoutMS) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMS);
+      try {
+        return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    async function loadDefaultEndpoints() {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = parseEndpoints(params.get("url"));
+      if (fromQuery.length) return fromQuery;
+
+      try {
+        const res = await fetch("/api/ip-check-config", { cache: "no-store" });
+        const cfg = await res.json();
+        if (cfg && Array.isArray(cfg.ipv6_urls)) {
+          const urls = parseEndpoints(cfg.ipv6_urls.join(","));
+          if (urls.length) return urls;
+        }
+        if (cfg && cfg.ipv6_url) return parseEndpoints(cfg.ipv6_url);
+      } catch (_) {}
+
+      return [pageOrigin() + "/api/my-ipv6"];
+    }
+
+    async function fetchEndpoint(url) {
+      if (window.location.protocol === "https:" && /^http:\/\//i.test(url)) {
+        return { url, error: "https_page_cannot_detect_ipv6_via_http_endpoint", ok: false };
+      }
+      const requestURL = url;
+      const started = performance.now();
+      const res = await fetchWithTimeout(requestURL, { cache: "no-store" }, IP_CHECK_TIMEOUT_MS);
+      const latency = Math.max(1, Math.round(performance.now() - started));
+      const raw = await res.text();
+      let data = null;
+      try { data = JSON.parse(raw); } catch (_) { data = null; }
+
+      const ip = extractIP(raw, data);
+      const version = responseVersion(data, ip);
+      const ok = res.ok && version === "IPv6" && !(data && data.available === false);
+      return { url, latency, raw, data, ip, version, ok };
+    }
+
+    async function run() {
+      const urls = parseEndpoints($("endpoint").value);
+      if (!urls.length) {
+        setStatus("bad", "缺少检测地址", "请填写 CDN IPv6 接口 URL。");
+        return;
+      }
+
+      $("endpoint").value = formatEndpoints(urls);
+      $("usedUrl").textContent = formatEndpoints(urls);
+      updateCurl(urls[0]);
+      setStatus("checking", "正在获取...", "正在通过 CDN IPv6 接口请求地址。");
+      $("ip").textContent = "-";
+      $("version").textContent = "-";
+      $("latency").textContent = "-";
+      $("raw").textContent = "等待响应...";
+
+      const attempts = [];
+      try {
+        for (const url of urls) {
+          try {
+            const result = await fetchEndpoint(url);
+            attempts.push(result);
+            if (result.ok) break;
+          } catch (err) {
+            attempts.push({
+              url,
+              error: String(err && err.name === "AbortError" ? "timeout" : (err && err.stack || err)),
+              ok: false,
+              timeout_ms: err && err.name === "AbortError" ? IP_CHECK_TIMEOUT_MS : null
+            });
+          }
+        }
+
+        const result = attempts.find(item => item.ok) || attempts[attempts.length - 1];
+
+        $("usedUrl").textContent = result.url || formatEndpoints(urls);
+        updateCurl(result.url || urls[0]);
+        $("ip").textContent = result.ip || "未检测到";
+        $("version").textContent = result.version || "未知";
+        $("latency").textContent = result.latency ? result.latency + " ms" : "-";
+        $("raw").textContent = JSON.stringify(attempts.map(item => ({
+          url: item.url,
+          ok: item.ok,
+          latency_ms: item.latency || null,
+          ip: item.ip || "",
+          ip_version: item.version || "",
+          error: item.error || "",
+          timeout_ms: item.timeout_ms || null,
+          response: item.data || item.raw || ""
+        })), null, 2);
+
+        setStatus(
+          result.ok ? "ok" : "bad",
+          result.ok ? "已获取 IPv6" : "本次连接不是 IPv6",
+          result.ok ? "CDN IPv6 链路可用。" : "已尝试配置的 IPv6 检测接口，请确认 CDN 域名已开启 IPv6，且检测 URL 指向 /api/my-ipv6。"
+        );
+      } catch (err) {
+        setStatus("bad", "请求失败", "浏览器无法访问该 CDN 检测接口，可能是 CORS、HTTPS 或域名解析问题。");
+        $("raw").textContent = String(err && err.stack || err);
+      }
+    }
+
+    async function copyResult() {
+      const text = [
+        "IP: " + $("ip").textContent,
+        "Version: " + $("version").textContent,
+        "Latency: " + $("latency").textContent,
+        "URL: " + $("usedUrl").textContent
+      ].join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        $("copyBtn").textContent = "已复制";
+      } catch (_) {
+        $("copyBtn").textContent = "复制失败";
+      }
+      window.setTimeout(() => $("copyBtn").textContent = "复制结果", 1400);
+    }
+
+    $("runBtn").addEventListener("click", run);
+    $("sameOriginBtn").addEventListener("click", () => {
+      $("endpoint").value = pageOrigin() + "/api/my-ipv6";
+      run();
+    });
+    $("copyBtn").addEventListener("click", copyResult);
+    $("endpoint").addEventListener("keydown", event => {
+      if (event.key === "Enter") run();
+    });
+
+    loadDefaultEndpoints().then(urls => {
+      $("endpoint").value = formatEndpoints(urls);
+      $("usedUrl").textContent = formatEndpoints(urls);
+      updateCurl(urls[0]);
+      run();
+    });
+  </script>
+</body>
+</html>

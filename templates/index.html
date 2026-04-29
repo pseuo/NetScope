@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetScope - IP 查询与网络检测工具</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-a: #eef3ff;
+      --bg-b: #f7fbff;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-strong: #ffffff;
+      --text: #101522;
+      --muted: #5f6b86;
+      --line: rgba(30, 41, 59, 0.12);
+      --accent: #247cff;
+      --accent-strong: #1362dc;
+      --ok: #1d8a49;
+      --danger: #cf2f3f;
+      --warn: #c57a11;
+      --shadow: 0 12px 36px rgba(31, 57, 112, 0.12);
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --font: "SF Pro Text", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-a: #0d1322;
+      --bg-b: #141c30;
+      --surface: rgba(16, 24, 40, 0.72);
+      --surface-strong: #101a2d;
+      --text: #eaf0ff;
+      --muted: #9aa8c8;
+      --line: rgba(176, 194, 232, 0.18);
+      --accent: #69a4ff;
+      --accent-strong: #4f8ef3;
+      --ok: #5ad78a;
+      --danger: #ff7d87;
+      --warn: #ffca7a;
+      --shadow: 0 18px 48px rgba(3, 8, 19, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(920px 420px at -2% -6%, rgba(135, 184, 255, 0.2), transparent 62%),
+        radial-gradient(760px 460px at 102% -12%, rgba(157, 206, 255, 0.16), transparent 58%),
+        linear-gradient(165deg, var(--bg-a), var(--bg-b));
+      transition: background 240ms ease, color 240ms ease;
+    }
+
+    .wrap {
+      width: min(1160px, calc(100% - 28px));
+      margin: 18px auto 28px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topbar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 6px;
+    }
+
+    .logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #70adff, #1f78ff);
+      box-shadow: 0 6px 16px rgba(36, 124, 255, 0.36);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+      font-weight: 620;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .menu-toggle {
+      display: none;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--surface-strong);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 550;
+      transition: all 180ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(36, 124, 255, 0.36);
+    }
+
+    .btn.link {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .hero,
+    .card {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .hero {
+      padding: 22px;
+    }
+
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 860px;
+      line-height: 1.65;
+    }
+
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .card {
+      padding: 18px;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title-row h3 {
+      margin: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 620;
+      background: rgba(36, 124, 255, 0.14);
+      color: var(--accent);
+    }
+
+    .nat-summary {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(36, 124, 255, 0.12), transparent 46%),
+        var(--surface-strong);
+    }
+
+    .nat-summary::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--accent);
+    }
+
+    .nat-badge {
+      min-width: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 760;
+      letter-spacing: 0.2px;
+      color: var(--accent-strong);
+      background: rgba(36, 124, 255, 0.14);
+      border: 1px solid rgba(36, 124, 255, 0.24);
+    }
+
+    .nat-name {
+      margin: 0 0 6px;
+      font-size: 17px;
+      line-height: 1.35;
+      font-weight: 660;
+      color: var(--text);
+    }
+
+    .nat-desc {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .nat-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .nat-metric {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      background: var(--surface-strong);
+      min-width: 0;
+    }
+
+    .nat-metric .label {
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .nat-metric .value {
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .nat-detail-table {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--surface-strong);
+    }
+
+    .nat-detail-table table {
+      background: transparent;
+    }
+
+    .nat-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      line-height: 18px;
+      border: 1px solid transparent;
+      margin-right: 8px;
+      margin-bottom: 4px;
+    }
+
+    .nat-tag.good { color: var(--ok); border-color: rgba(29, 138, 73, 0.24); background: rgba(29, 138, 73, 0.1); }
+    .nat-tag.warn { color: var(--warn); border-color: rgba(197, 122, 17, 0.24); background: rgba(197, 122, 17, 0.1); }
+    .nat-tag.bad { color: var(--danger); border-color: rgba(207, 47, 63, 0.24); background: rgba(207, 47, 63, 0.1); }
+    .nat-tag.info { color: var(--accent); border-color: rgba(36, 124, 255, 0.24); background: rgba(36, 124, 255, 0.1); }
+
+    .compat {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .compat-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 10px 8px;
+      text-align: center;
+      background: var(--surface-strong);
+    }
+
+    .compat-item .score {
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .compat-item .name {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .ok { color: var(--ok); font-weight: 620; }
+    .bad { color: var(--danger); font-weight: 620; }
+    .warn { color: var(--warn); font-weight: 620; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 7px;
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td:first-child {
+      width: 224px;
+      color: var(--muted);
+      font-weight: 540;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(14, 20, 34, 0.95);
+      color: #d7e6ff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .api-examples {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .api-example {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 13px;
+      background: var(--surface-strong);
+    }
+
+    .api-example h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .api-example p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .api-example pre {
+      background: rgba(14, 20, 34, 0.95);
+    }
+
+    .api-image-preview {
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 8px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius-md);
+      background: #fff;
+    }
+
+    .api-image-preview img {
+      display: block;
+      width: 100%;
+      max-width: 430px;
+      height: auto;
+    }
+
+    .egress-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .egress-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 13px;
+      background: var(--surface-strong);
+      min-width: 0;
+    }
+
+    .egress-card h4 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    .egress-item {
+      padding: 9px 0;
+      border-top: 1px solid var(--line);
+      overflow-wrap: anywhere;
+    }
+
+    .egress-ip {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 650;
+      color: var(--text);
+    }
+
+    .egress-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .egress-empty {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 980px) {
+      .wrap {
+        width: min(1160px, calc(100% - 18px));
+      }
+
+      .topbar {
+        top: 8px;
+        flex-direction: column;
+        align-items: stretch;
+        border-radius: 18px;
+      }
+
+      .topbar-head {
+        width: 100%;
+      }
+
+      .brand {
+        justify-content: flex-start;
+        padding-left: 0;
+      }
+
+      .menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 9px 13px;
+      }
+
+      .toolbar {
+        display: none;
+        width: 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+      }
+
+      .toolbar.is-open {
+        display: grid;
+      }
+
+      .hero h2 {
+        font-size: 22px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .compat {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .nat-summary {
+        grid-template-columns: auto 1fr;
+      }
+
+      .nat-badge {
+        min-width: 62px;
+        font-size: 15px;
+      }
+
+      .nat-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .api-examples {
+        grid-template-columns: 1fr;
+      }
+
+      .egress-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .card-title-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 760px) {
+      td,
+      tr,
+      table,
+      tbody {
+        display: block;
+      }
+
+      tr {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      tr:last-child {
+        border-bottom: none;
+      }
+
+      td {
+        border-bottom: none;
+        width: 100%;
+        padding: 4px 0;
+      }
+
+      td:first-child {
+        width: 100%;
+        margin-bottom: 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbar-head">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <h1 data-i18n="appTitle">NetScope 网络视镜</h1>
+        </div>
+        <button id="menuToggleBtn" class="btn menu-toggle" type="button" data-i18n="mobileMenu" aria-expanded="false">Menu</button>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <a href="/ip-look" class="btn link" data-i18n="goHome">IP Query</a>
+        <a href="/nat-test" class="btn link" data-i18n="natTest">NAT Test</a>
+        <a href="/screen-test" class="btn link" data-i18n="screenTest">Screen Test</a>
+        <a href="/bandwidth-calculator" class="btn link" data-i18n="bandwidthCalculator">Bandwidth Calculator</a>
+        <a href="/tools" class="btn link" data-i18n="ipTools">IP Tools</a>
+        <button id="langBtn" class="btn">EN</button>
+        <button id="themeBtn" class="btn" data-i18n="themeAuto">Theme: Auto</button>
+      </div>
+    </div>
+
+    <section class="hero">
+      <h2 data-i18n="heroTitle">NetScope 网络视镜</h2>
+      <p data-i18n="heroDesc">Automatically detect your current public IP, IPv4/IPv6 availability, and browser WebRTC NAT behavior.</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3 data-i18n="connTitle">Current Connection</h3>
+        <div id="connInfo">-</div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="natTitle">Browser NAT</h3>
+        <div id="natInfo">
+          <div class="nat-summary">
+            <div class="nat-badge">NAT?</div>
+            <div>
+              <p class="nat-name">-</p>
+              <p class="nat-desc">-</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 data-i18n="networkTitle">Current Public IP Detail</h3>
+      <div id="networkInfo">-</div>
+    </section>
+
+    <section class="card">
+      <h3 data-i18n="egressTitle">网络出口</h3>
+      <div id="egressInfo">-</div>
+    </section>
+
+    <section class="card">
+      <h3 data-i18n="apiExamplesTitle">接口引用示例</h3>
+      <div class="api-examples">
+        <div class="api-example">
+          <h4 data-i18n="apiHtmlImageTitle">HTML 引用示例</h4>
+          <p data-i18n="apiHtmlImageDesc">将当前 IP 以图片形式嵌入网页，域名自动使用当前访问地址。</p>
+          <pre data-api-example="html-image">-</pre>
+        </div>
+
+        <div class="api-example">
+          <h4 data-i18n="apiMarkdownImageTitle">Markdown 引用示例</h4>
+          <p data-i18n="apiMarkdownImageDesc">适用于 README、文档或支持 Markdown 的页面。</p>
+          <pre data-api-example="markdown-image">-</pre>
+        </div>
+
+        <div class="api-example">
+          <h4 data-i18n="apiCurlRootTitle">命令行获取公网 IP</h4>
+          <p data-i18n="apiCurlRootDesc">curl 访问根路径时返回纯文本公网 IP。</p>
+          <pre data-api-example="curl-root">-</pre>
+        </div>
+
+        <div class="api-example">
+          <h4 data-i18n="apiCurlMoreTitle">获取我的 IP 地址详情</h4>
+          <p data-i18n="apiCurlMoreDesc">返回地理位置、ASN、运营商、代理/VPN 等详细信息。</p>
+          <pre data-api-example="curl-more">-</pre>
+        </div>
+
+        <div class="api-example">
+          <h4 data-i18n="apiCurlQueryTitle">查询指定 IP 或域名</h4>
+          <p data-i18n="apiCurlQueryDesc">将 q 参数替换为要查询的 IP 地址或域名。</p>
+          <pre data-api-example="curl-query">-</pre>
+        </div>
+
+        <div class="api-example">
+          <h4 data-i18n="apiLinkedImageTitle">嵌入为图片</h4>
+          <p data-i18n="apiLinkedImageDesc">可给图片增加链接，点击后跳转到 IP 查询网站；下方图片可右键保存。</p>
+          <pre data-api-example="linked-image">&lt;a href="/"&gt;
+  &lt;img src="/img" alt="my ip address" width="215" height="70"/&gt;
+&lt;/a&gt;</pre>
+          <a class="api-image-preview" id="apiImagePreview" href="/img" target="_blank" rel="noopener">
+            <img id="apiImagePreviewImg" src="/img" alt="my ip address" loading="lazy" />
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title-row">
+        <h3 data-i18n="iceTitle">WebRTC ICE Candidates</h3>
+        <button id="copyCandidatesBtn" class="btn" type="button" data-copy-label="Copy" data-i18n="copyCandidates">Copy</button>
+      </div>
+      <pre id="candidates">-</pre>
+    </section>
+  </div>
+
+  <script src="/assets/js/i18n.js"></script>
+  <script src="/assets/js/ui-common.js"></script>
+  <script src="/assets/js/mobile-nav.js"></script>
+  <script>
+    const I18N = (window.APP_I18N && window.APP_I18N.my) || {
+      zh: { fields: {} },
+      en: { fields: {} }
+    };
+    const ui = window.UICommon.createUIContext({ i18n: I18N });
+
+    function esc(s) {
+      if (s === undefined || s === null) return "";
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function t(key) {
+      return ui.t(key);
+    }
+
+    function f(key) {
+      return ui.f(key);
+    }
+
+    const IP_CHECK_TIMEOUT_MS = 2500;
+
+    function renderAPIExamples() {
+      const origin = window.location.origin;
+      const imgURL = origin + "/img";
+      const imageAlt = ui.getLang() === "zh" ? "我的 IP 地址" : "my ip address";
+      const examples = {
+        "html-image": `<img src="${imgURL}" alt="${imageAlt}" width="215" height="70">`,
+        "markdown-image": `![${imageAlt}](${imgURL})`,
+        "curl-root": `curl ${origin}`,
+        "curl-more": `curl ${origin}/more`,
+        "curl-query": `curl "${origin}/api/ip?q=8.8.8.8&lang=${ui.getLang()}"`,
+        "linked-image": `<a href="${origin}">\n  <img src="${imgURL}" alt="${imageAlt}" width="215" height="70"/>\n</a>`
+      };
+
+      document.querySelectorAll("[data-api-example]").forEach((node) => {
+        const key = node.getAttribute("data-api-example");
+        if (examples[key]) node.textContent = examples[key];
+      });
+
+      const preview = document.getElementById("apiImagePreview");
+      const previewImg = document.getElementById("apiImagePreviewImg");
+      if (preview) preview.href = imgURL;
+      if (previewImg) {
+        previewImg.src = imgURL;
+        previewImg.alt = imageAlt;
+      }
+    }
+
+    function setCopyButtonText(text) {
+      const button = document.getElementById("copyCandidatesBtn");
+      if (button) button.textContent = text;
+    }
+
+    async function writeClipboardText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (!copied) throw new Error("copy failed");
+    }
+
+    async function copyCandidates() {
+      const button = document.getElementById("copyCandidatesBtn");
+      const candidates = document.getElementById("candidates");
+      if (!button || !candidates) return;
+      const defaultLabel = t("copyCandidates") || button.textContent || "Copy";
+      try {
+        await writeClipboardText(candidates.textContent || "");
+        setCopyButtonText(ui.getLang() === "zh" ? "已复制" : "Copied");
+      } catch (err) {
+        setCopyButtonText(ui.getLang() === "zh" ? "复制失败" : "Copy failed");
+      }
+      window.setTimeout(() => setCopyButtonText(defaultLabel), 1600);
+    }
+
+    function row(label, value) {
+      return `<tr><td>${esc(label)}</td><td>${value}</td></tr>`;
+    }
+
+    function boolTag(v) {
+      return v ? `<span class="bad">${t("yes")}</span>` : `<span class="ok">${t("no")}</span>`;
+    }
+
+    function natPresenceTag(v) {
+      if (v === null || v === undefined) return `<span class="warn">${t("unknown")}</span>`;
+      return boolTag(v);
+    }
+
+    function availTag(v) {
+      return v ? `<span class="ok">${t("available")}</span>` : `<span class="warn">${t("unavailable")}</span>`;
+    }
+
+    function translateValue(value, map) {
+      if (value === null || value === undefined) return "";
+      const raw = String(value).trim();
+      if (!raw) return "";
+      if (ui.getLang() !== "zh") return raw;
+      return map[raw.toLowerCase()] || raw;
+    }
+
+    function localizedNatType(data) {
+      if (ui.getLang() === "zh") return data.type_name_zh || data.type_name || "";
+      return data.type_name || data.type_name_zh || "";
+    }
+
+    function natLabel(data) {
+      const code = data.type_code || "unknown";
+      if (code === "open" || code === "direct") return "NAT0";
+      if (code === "full_cone") return "NAT1";
+      if (["restricted_cone", "port_restricted", "cone"].includes(code)) return "NAT2";
+      if (["symmetric", "relay", "udp_blocked", "udp_restricted"].includes(code)) return "NAT3";
+      return "NAT?";
+    }
+
+    function natScoreClass(score) {
+      if (score === "Best" || score === "Good") return "good";
+      if (score === "Moderate") return "warn";
+      return "bad";
+    }
+
+    function localizeNatScore(score) {
+      if (ui.getLang() !== "zh") return score;
+      return {
+        Best: "最佳",
+        Good: "良好",
+        Moderate: "一般",
+        Limited: "受限",
+        Unknown: "无法判断"
+      }[score] || score;
+    }
+
+    function buildCompatibility(typeCode) {
+      const names = ui.getLang() === "zh"
+        ? ["在线游戏", "P2P 下载", "视频通话", "远程访问"]
+        : ["Online gaming", "P2P downloads", "Video calls", "Remote access"];
+      const map = {
+        open: ["Best", "Best", "Best", "Best"],
+        direct: ["Best", "Best", "Best", "Good"],
+        full_cone: ["Best", "Good", "Best", "Good"],
+        restricted_cone: ["Good", "Good", "Best", "Moderate"],
+        port_restricted: ["Moderate", "Moderate", "Good", "Limited"],
+        cone: ["Good", "Good", "Best", "Good"],
+        symmetric: ["Limited", "Limited", "Good", "Limited"],
+        udp_blocked: ["Limited", "Limited", "Moderate", "Limited"],
+        relay: ["Moderate", "Limited", "Good", "Good"],
+        udp_restricted: ["Moderate", "Moderate", "Good", "Limited"]
+      };
+      const scores = map[typeCode] || ["Unknown", "Unknown", "Unknown", "Unknown"];
+      return scores.map((score, index) => [score, names[index]]);
+    }
+
+    function renderNatPresence(value) {
+      if (value === null || value === undefined) return `<span class="nat-tag warn">${t("unknown")}</span>`;
+      return value ? `<span class="nat-tag warn">${t("yes")}</span>` : `<span class="nat-tag good">${t("no")}</span>`;
+    }
+
+    function renderLocalIP(data) {
+      if (data.local_ip) return esc(data.local_ip);
+      if (data.type_code === "webrtc_srflx_unavailable" || data.method === "webrtc-ice-multi-stun") {
+        return `<span class="nat-tag warn">${ui.getLang() === "zh" ? "浏览器已隐藏（mDNS）" : "Hidden by browser (mDNS)"}</span>`;
+      }
+      return "-";
+    }
+
+    function localizedConfidence(value) {
+      return translateValue(value, {
+        low: "低",
+        medium: "中",
+        high: "高"
+      });
+    }
+
+    function localizedMethod(value) {
+      return translateValue(value, {
+        "webrtc-ice-multi-stun": "WebRTC ICE 多 STUN 探测"
+      });
+    }
+
+    function localizedConnectionMode(value) {
+      return translateValue(value, {
+        unknown: "未知",
+        direct: "直连",
+        mapped: "映射",
+        relay: "中继"
+      });
+    }
+
+    function localizedCandidateType(value) {
+      return translateValue(value, {
+        host: "主机候选",
+        srflx: "服务器反射候选",
+        relay: "中继候选",
+        prflx: "对等反射候选"
+      });
+    }
+
+    function localizedGatheringState(value) {
+      return translateValue(value, {
+        new: "未开始",
+        gathering: "收集中",
+        complete: "已完成"
+      });
+    }
+
+    async function getJSON(url, options) {
+      const resp = await fetch(url, options);
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.error || "request failed");
+      }
+      return data;
+    }
+
+    async function getJSONWithTimeout(url, options, timeoutMS) {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMS);
+      try {
+        return await getJSON(url, Object.assign({}, options, { signal: controller.signal }));
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    async function getOptionalJSON(url, expectedVersion) {
+      try {
+        if (window.location.protocol === "https:" && /^http:\/\//i.test(url)) {
+          return { ip: "", ip_version: "", available: false };
+        }
+        const data = await getJSONWithTimeout(url, { cache: "no-store" }, IP_CHECK_TIMEOUT_MS);
+        if (expectedVersion === 6 && Object.prototype.hasOwnProperty.call(data, "ipv6")) {
+          if (!data.ipv6) return { ip: "", ip_version: "IPv6", available: false };
+          data.ip = String(data.ipv6);
+          data.ip_version = "IPv6";
+          data.available = data.is_ipv6 !== false;
+        }
+        if (expectedVersion === 4 && Object.prototype.hasOwnProperty.call(data, "ipv4")) {
+          if (!data.ipv4) return { ip: "", ip_version: "IPv4", available: false };
+          data.ip = String(data.ipv4);
+          data.ip_version = "IPv4";
+          data.available = data.is_ipv4 !== false;
+        }
+        const actualVersion = data.version === 4 || data.is_ipv4 === true || data.ip_version === "IPv4" || (data.ip && data.ip.indexOf(":") === -1)
+          ? 4
+          : data.version === 6 || data.is_ipv6 === true || data.ip_version === "IPv6" || (data.ip && data.ip.indexOf(":") !== -1) ? 6 : 0;
+        if (typeof data.available !== "boolean") data.available = actualVersion > 0;
+        if (expectedVersion) data.available = data.available === true && actualVersion === expectedVersion;
+        if (expectedVersion && !data.available) data.ip = "";
+        if (!data.ip_version) {
+          if (actualVersion === 4) data.ip_version = "IPv4";
+          if (actualVersion === 6) data.ip_version = "IPv6";
+        }
+        return data;
+      } catch (err) {
+        return { ip: "", ip_version: "", available: false };
+      }
+    }
+
+    function checkIPVersion(config, version) {
+      const key = version.toLowerCase();
+      if (key === "ipv6" && Array.isArray(config.ipv6_urls) && config.ipv6_urls.length) {
+        return config.ipv6_urls.reduce((promise, url) => {
+          return promise.then(result => result && result.available ? result : getOptionalJSON(url, 6));
+        }, Promise.resolve(null));
+      }
+      const checkURL = config[key + "_url"];
+      if (checkURL) return getOptionalJSON(checkURL, version === "IPv6" ? 6 : 4);
+      return getOptionalJSON("/api/my-" + key, version === "IPv6" ? 6 : 4);
+    }
+
+    async function cacheIPResult(result, version) {
+      if (!result || !result.available || !result.ip) return;
+      try {
+        await fetch("/api/ip-cache", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ ip: result.ip, version })
+        });
+      } catch (err) {}
+    }
+
+    async function loadIPCheckConfig() {
+      try {
+        return await getJSON("/api/ip-check-config", { cache: "no-store" });
+      } catch (err) {
+        return {};
+      }
+    }
+
+    function renderConnInfo(myip, ipv4, ipv6) {
+      const html = [
+        row(f("currentIp"), esc(myip.ip || "")),
+        row(f("currentIpVersion"), esc(myip.ip_version || "")),
+        row(f("ipv4"), `${esc(ipv4.ip || "")} ${availTag(ipv4.available)}`),
+        row(f("ipv6"), `${esc(ipv6.ip || "")} ${availTag(ipv6.available)}`)
+      ];
+      document.getElementById("connInfo").innerHTML = `<table>${html.join("")}</table>`;
+    }
+
+    function renderNetworkInfo(data) {
+      const rows = [
+        row(f("address"), esc(data.address && data.address.ip ? data.address.ip : "")),
+        row(f("hostname"), esc(data.address && data.address.hostname ? data.address.hostname : "")),
+        row(f("ipVersion"), esc(data.address && data.address.ip_version ? data.address.ip_version : "")),
+        row(f("isp"), esc(data.network && data.network.isp ? data.network.isp : "")),
+        row(f("ipOrganization"), esc(data.network && data.network.ip_organization ? data.network.ip_organization : "")),
+        row(f("asn"), esc(data.network && data.network.asn ? data.network.asn : "")),
+        row(f("asnNumber"), esc(data.network && data.network.asn_number ? data.network.asn_number : "")),
+        row(f("asnOrganization"), esc(data.network && data.network.asn_organization ? data.network.asn_organization : "")),
+        row(f("continent"), esc(data.location && data.location.continent ? data.location.continent : "")),
+        row(f("country"), `${esc(data.location && data.location.country ? data.location.country : "")} (${esc(data.location && data.location.country_code ? data.location.country_code : "")})`),
+        row(f("region"), esc(data.location && data.location.region ? data.location.region : "")),
+        row(f("province"), esc(data.location && data.location.province ? data.location.province : "")),
+        row(f("city"), esc(data.location && data.location.city ? data.location.city : "")),
+        row(f("district"), esc(data.location && data.location.district ? data.location.district : "")),
+        row(f("street"), esc(data.location && data.location.street ? data.location.street : "")),
+        row(f("areaCode"), esc(data.location && data.location.area_code ? data.location.area_code : "")),
+        row(f("cityCode"), esc(data.location && data.location.city_code ? data.location.city_code : "")),
+        row(f("postalCode"), esc(data.location && data.location.postal_code ? data.location.postal_code : "")),
+        row(f("timezone"), esc(data.location && data.location.timezone ? data.location.timezone : "")),
+        row(f("elevation"), esc(data.location && data.location.elevation ? data.location.elevation : "")),
+        row(f("weatherStation"), esc(data.location && data.location.weather_station ? data.location.weather_station : "")),
+        row(f("latLng"), `${esc(data.location && data.location.latitude ? data.location.latitude : "")} / ${esc(data.location && data.location.longitude ? data.location.longitude : "")}`),
+        row(f("formatted"), esc(data.location && data.location.formatted ? data.location.formatted : "")),
+        row(f("ipType"), `<span class="pill">${esc(data.ip_type && data.ip_type.label ? data.ip_type.label : "")}</span> raw=${esc(data.ip_type && data.ip_type.raw_usage_type ? data.ip_type.raw_usage_type : "")}`),
+        row(f("proxy"), boolTag(data.security && data.security.is_proxy)),
+        row(f("vpn"), boolTag(data.security && data.security.is_vpn)),
+        row(f("tor"), boolTag(data.security && data.security.is_tor)),
+        row(f("datacenter"), boolTag(data.security && data.security.is_datacenter)),
+        row(f("hosting"), boolTag(data.security && data.security.is_hosting)),
+        row(f("mobile"), boolTag(data.security && data.security.is_mobile)),
+        row(f("geoSource"), esc(data.source && data.source.geo_source ? data.source.geo_source : "")),
+        row(f("asnSource"), esc(data.source && data.source.asn_source ? data.source.asn_source : "")),
+        row(f("securitySource"), esc(data.source && data.source.security_source ? data.source.security_source : "")),
+        row(f("ispSource"), esc(data.source && data.source.isp_source ? data.source.isp_source : "")),
+        row(f("riskScore"), esc(data.security && data.security.risk_score ? data.security.risk_score : "")),
+        row(f("securityType"), esc(data.security && data.security.type ? data.security.type : "")),
+        row(f("securityProvider"), esc(data.security && data.security.provider ? data.security.provider : "")),
+        row(f("proxySource"), esc(data.source && data.source.proxy_source ? data.source.proxy_source : "")),
+        row(f("vpnSource"), esc(data.source && data.source.vpn_source ? data.source.vpn_source : "")),
+        row(f("torSource"), esc(data.source && data.source.tor_source ? data.source.tor_source : "")),
+        row(f("hostingSource"), esc(data.source && data.source.hosting_source ? data.source.hosting_source : "")),
+        row(f("datacenterSource"), esc(data.source && data.source.datacenter_source ? data.source.datacenter_source : "")),
+        row(f("mobileSource"), esc(data.source && data.source.mobile_source ? data.source.mobile_source : "")),
+        row(f("riskSource"), esc(data.source && data.source.risk_source ? data.source.risk_source : "")),
+        row(f("typeSource"), esc(data.source && data.source.type_source ? data.source.type_source : ""))
+      ];
+      document.getElementById("networkInfo").innerHTML = `<table>${rows.join("")}</table>`;
+    }
+
+    async function loadEgressDetail(result) {
+      if (!result || !result.available || !result.ip) {
+        return { available: false, ip: result && result.ip ? result.ip : "" };
+      }
+
+      try {
+        const detail = await getJSON("/api/ip?q=" + encodeURIComponent(result.ip) + "&lang=" + ui.getLang(), { cache: "no-store" });
+        return { available: true, ip: result.ip, detail };
+      } catch (err) {
+        return { available: true, ip: result.ip, error: err.message || "request failed" };
+      }
+    }
+
+    function compactParts(parts) {
+      return parts.filter((part) => part !== undefined && part !== null && String(part).trim() !== "");
+    }
+
+    function renderEgressLine(ip, detail) {
+      if (!detail) return `<div class="egress-item"><span class="egress-ip">${esc(ip)}</span></div>`;
+      const location = detail.location || {};
+      const network = detail.network || {};
+      const address = detail.address || {};
+      const place = compactParts([
+        location.country,
+        location.region || location.province,
+        location.city,
+        location.district
+      ]).join("/");
+      const asn = network.asn || (network.asn_number ? "AS" + String(network.asn_number) : "");
+      const org = network.asn_organization || network.ip_organization || network.isp || address.hostname || "";
+      const formatted = location.formatted && location.formatted !== place ? location.formatted : "";
+      const desc = compactParts([place || formatted, asn, org]).join(" ");
+
+      return `
+        <div class="egress-item">
+          <span class="egress-ip">${esc(ip)}</span>
+          <span class="egress-desc">${esc(desc || "-")}</span>
+        </div>`;
+    }
+
+    function renderEgressCard(version, result) {
+      if (!result || !result.available) {
+        return `
+          <div class="egress-card">
+            <h4>${esc(version)}</h4>
+            <p class="egress-empty">${esc(t("unavailable"))}</p>
+          </div>`;
+      }
+
+      if (result.error) {
+        return `
+          <div class="egress-card">
+            <h4>${esc(version)}</h4>
+            <div class="egress-item">
+              <span class="egress-ip">${esc(result.ip)}</span>
+              <span class="egress-desc bad">${esc(result.error)}</span>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="egress-card">
+          <h4>${esc(version)}</h4>
+          ${renderEgressLine(result.ip, result.detail)}
+        </div>`;
+    }
+
+    function renderEgressInfo(ipv4Detail, ipv6Detail) {
+      document.getElementById("egressInfo").innerHTML = `
+        <div class="egress-grid">
+          ${renderEgressCard("IPv4", ipv4Detail)}
+          ${renderEgressCard("IPv6", ipv6Detail)}
+        </div>`;
+    }
+
+    function renderNATInfo(data) {
+      const publicIP = data.public_ip || "-";
+      const publicPort = data.public_port || "-";
+      const connectionMode = localizedConnectionMode(data.connection_mode || "") || "-";
+      const rows = [
+        row(f("localIp"), renderLocalIP(data)),
+        row(f("method"), esc(localizedMethod(data.method || ""))),
+        row(f("selectedCandidate"), esc(localizedCandidateType(data.selected_candidate_type || ""))),
+        row(f("gatheringState"), esc(localizedGatheringState(data.gathering_state || ""))),
+        row(f("relayAvailable"), data.relay_available ? `<span class="nat-tag good">${t("yes")}</span>` : `<span class="nat-tag bad">${t("no")}</span>`),
+        row(f("directAvailable"), data.direct_available ? `<span class="nat-tag good">${t("yes")}</span>` : `<span class="nat-tag bad">${t("no")}</span>`),
+        row(f("hasNat"), renderNatPresence(data.has_nat))
+      ];
+      const type = localizedNatType(data) || t("unknown");
+      const altType = ui.getLang() === "zh" ? (data.type_name || "Unknown") : (data.type_name_zh || "未知");
+      const compatibility = buildCompatibility(data.type_code || "").map((item) => {
+        return `<div class="compat-item"><div class="score"><span class="nat-tag ${natScoreClass(item[0])}">${esc(localizeNatScore(item[0]))}</span></div><div class="name">${esc(item[1])}</div></div>`;
+      }).join("");
+      document.getElementById("natInfo").innerHTML = `
+        <div class="nat-summary">
+          <div class="nat-badge">${esc(natLabel(data))}</div>
+          <div>
+            <p class="nat-name">${esc(type)} / ${esc(altType)}</p>
+            <p class="nat-desc">${esc(data.description || "")}</p>
+          </div>
+        </div>
+        <div class="nat-metrics">
+          <div class="nat-metric">
+            <p class="label">${esc(f("publicIp"))}</p>
+            <p class="value">${esc(publicIP)}${publicPort !== "-" ? ":" + esc(publicPort) : ""}</p>
+          </div>
+          <div class="nat-metric">
+            <p class="label">${esc(f("connectionMode"))}</p>
+            <p class="value">${esc(connectionMode)}</p>
+          </div>
+          <div class="nat-metric">
+            <p class="label">${esc(f("confidence"))}</p>
+            <p class="value"><span class="nat-tag info">${esc(localizedConfidence(data.confidence || "-"))}</span></p>
+          </div>
+        </div>
+        <div class="nat-detail-table"><table>${rows.join("")}</table></div>
+        <div class="compat">${compatibility}</div>`;
+    }
+
+    function parseCandidate(candidateStr) {
+      const parts = candidateStr.trim().split(/\s+/);
+      const result = {
+        candidate: candidateStr,
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+
+      if (parts.length >= 8) {
+        result.foundation = parts[0].replace("candidate:", "");
+        result.component = parts[1];
+        result.protocol = (parts[2] || "").toLowerCase();
+        result.address = parts[4] || "";
+        result.port = parseInt(parts[5], 10) || 0;
+
+        const typIndex = parts.indexOf("typ");
+        if (typIndex > -1 && parts[typIndex + 1]) result.type = parts[typIndex + 1];
+
+        const raddrIndex = parts.indexOf("raddr");
+        if (raddrIndex > -1 && parts[raddrIndex + 1]) result.related_address = parts[raddrIndex + 1];
+
+        const rportIndex = parts.indexOf("rport");
+        if (rportIndex > -1 && parts[rportIndex + 1]) result.related_port = parseInt(parts[rportIndex + 1], 10) || 0;
+      }
+      return result;
+    }
+
+    function emptyCandidate() {
+      return {
+        candidate: "",
+        foundation: "",
+        component: "",
+        protocol: "",
+        address: "",
+        port: 0,
+        type: "",
+        related_address: "",
+        related_port: 0
+      };
+    }
+
+    function statsCandidateToJSON(candidate) {
+      if (!candidate) return emptyCandidate();
+      return {
+        candidate: candidate.candidateType || "",
+        foundation: candidate.foundation || "",
+        component: candidate.component || "",
+        protocol: (candidate.protocol || "").toLowerCase(),
+        address: candidate.address || candidate.ip || "",
+        port: candidate.port || 0,
+        type: candidate.candidateType || "",
+        related_address: candidate.relatedAddress || "",
+        related_port: candidate.relatedPort || 0
+      };
+    }
+
+    function extractSelectedPair(stats) {
+      let pair = null;
+      stats.forEach((report) => {
+        if (report && report.type === "candidate-pair" && (report.selected || report.nominated || report.state === "succeeded")) {
+          if (!pair || report.selected) pair = report;
+        }
+      });
+      if (!pair) return null;
+      return {
+        local: stats.get(pair.localCandidateId) || null,
+        remote: stats.get(pair.remoteCandidateId) || null
+      };
+    }
+
+    function buildProbeLabel(probe, index) {
+      if (probe && probe.label) return probe.label;
+      if (probe && Array.isArray(probe.urls) && probe.urls[0]) return probe.urls[0];
+      return "probe-" + String(index + 1);
+    }
+
+    async function runIceProbe(iceServers, label, onCandidate) {
+      const candidates = [];
+      const iceErrors = [];
+      const seen = new Set();
+
+      const pc = new RTCPeerConnection({
+        iceServers: iceServers || [],
+        iceCandidatePoolSize: 0
+      });
+
+      pc.createDataChannel("nat-test");
+
+      let gatheringIdleTimer = null;
+      let resolveGathering = null;
+
+      function rememberCandidate(candidateStr) {
+        const parsed = parseCandidate(candidateStr);
+        parsed.source = "browser";
+        const key = JSON.stringify(parsed);
+        if (!seen.has(key)) {
+          seen.add(key);
+          candidates.push(parsed);
+          return true;
+        }
+        return false;
+      }
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && event.candidate.candidate) {
+          if (rememberCandidate(event.candidate.candidate)) {
+            if (onCandidate) onCandidate(label, candidates.slice());
+          }
+          if (resolveGathering) {
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            gatheringIdleTimer = setTimeout(resolveGathering, 2500);
+          }
+        }
+      };
+
+      pc.onicecandidateerror = (event) => {
+        iceErrors.push({
+          source: "browser",
+          url: event.url || "",
+          address: event.address || "",
+          port: event.port || 0,
+          error_code: event.errorCode || 0,
+          error_text: event.errorText || ""
+        });
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+
+      await new Promise((resolve) => {
+        resolveGathering = resolve;
+        const timeout = setTimeout(resolve, 15000);
+        pc.onicegatheringstatechange = () => {
+          if (pc.iceGatheringState === "complete") {
+            clearTimeout(timeout);
+            if (gatheringIdleTimer) clearTimeout(gatheringIdleTimer);
+            resolve();
+          }
+        };
+      });
+      resolveGathering = null;
+
+      const report = {
+        label,
+        urls: (iceServers || []).flatMap((server) => Array.isArray(server.urls) ? server.urls : []),
+        candidates,
+        ice_errors: iceErrors,
+        gathering_state: pc.iceGatheringState || "",
+        ice_connection_state: pc.iceConnectionState || "",
+        connection_state: pc.connectionState || "",
+        selected_candidate_type: "",
+        selected_local_candidate: emptyCandidate(),
+        selected_remote_candidate: emptyCandidate()
+      };
+
+      pc.close();
+      return report;
+    }
+
+    async function detectBrowserNAT(currentIP) {
+      const cfg = await getJSON("/api/nat/browser-config");
+      const probeDefs = Array.isArray(cfg.stun_probes) && cfg.stun_probes.length ? cfg.stun_probes : [{ label: "default", urls: [] }];
+      const probes = [];
+      const allCandidates = [];
+      const allSeen = new Set();
+
+      function updateCandidateView() {
+        document.getElementById("candidates").textContent = JSON.stringify({ probes, candidates: allCandidates }, null, 2);
+      }
+
+      if (probeDefs.length > 1) {
+        const combinedURLs = probeDefs.flatMap((probeDef) => Array.isArray(probeDef.urls) ? probeDef.urls : []);
+        if (combinedURLs.length > 1) {
+          const combinedProbe = await runIceProbe(
+            [{ urls: combinedURLs }],
+            "combined-stun",
+            function (_, currentCandidates) {
+              currentCandidates.forEach((candidate) => {
+                const key = JSON.stringify(candidate);
+                if (!allSeen.has(key)) {
+                  allSeen.add(key);
+                  allCandidates.push(candidate);
+                }
+              });
+              updateCandidateView();
+            }
+          );
+          probes.push(combinedProbe);
+          combinedProbe.candidates.forEach((candidate) => {
+            const key = JSON.stringify(candidate);
+            if (!allSeen.has(key)) {
+              allSeen.add(key);
+              allCandidates.push(candidate);
+            }
+          });
+          updateCandidateView();
+        }
+      }
+
+      for (let i = 0; i < probeDefs.length; i += 1) {
+        const probeDef = probeDefs[i] || {};
+        const label = buildProbeLabel(probeDef, i);
+        const report = await runIceProbe(
+          [{ urls: Array.isArray(probeDef.urls) ? probeDef.urls : [] }],
+          label,
+          function (_, currentCandidates) {
+            currentCandidates.forEach((candidate) => {
+              const key = JSON.stringify(candidate);
+              if (!allSeen.has(key)) {
+                allSeen.add(key);
+                allCandidates.push(candidate);
+              }
+            });
+            updateCandidateView();
+          }
+        );
+        probes.push(report);
+        report.candidates.forEach((candidate) => {
+          const key = JSON.stringify(candidate);
+          if (!allSeen.has(key)) {
+            allSeen.add(key);
+            allCandidates.push(candidate);
+          }
+        });
+        updateCandidateView();
+      }
+
+      const primaryProbe = probes[0] || null;
+      const report = {
+        candidates: allCandidates,
+        probes: probes,
+        gathering_state: primaryProbe ? primaryProbe.gathering_state : "",
+        ice_connection_state: primaryProbe ? primaryProbe.ice_connection_state : "",
+        connection_state: primaryProbe ? primaryProbe.connection_state : "",
+        selected_candidate_type: primaryProbe ? primaryProbe.selected_candidate_type : "",
+        selected_local_candidate: primaryProbe ? primaryProbe.selected_local_candidate : emptyCandidate(),
+        selected_remote_candidate: primaryProbe ? primaryProbe.selected_remote_candidate : emptyCandidate()
+      };
+
+      const natResult = await getJSON("/api/nat/browser-report?lang=" + ui.getLang(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_agent: navigator.userAgent,
+          http_public_ip: currentIP || "",
+          candidates: report.candidates,
+          probes: report.probes,
+          gathering_state: report.gathering_state,
+          ice_connection_state: report.ice_connection_state,
+          connection_state: report.connection_state,
+          selected_candidate_type: report.selected_candidate_type,
+          selected_local_candidate: report.selected_local_candidate,
+          selected_remote_candidate: report.selected_remote_candidate
+        })
+      });
+
+      document.getElementById("candidates").textContent = JSON.stringify(report, null, 2);
+      renderNATInfo(natResult);
+    }
+
+    async function init() {
+      document.getElementById("connInfo").textContent = t("loading");
+      document.getElementById("networkInfo").textContent = t("loading");
+      document.getElementById("egressInfo").textContent = t("loading");
+      document.getElementById("natInfo").textContent = t("loading");
+      document.getElementById("candidates").textContent = t("collecting");
+      let currentIP = "";
+
+      try {
+        const [myip, checkConfig, network] = await Promise.all([
+          getJSON("/api/myip"),
+          loadIPCheckConfig(),
+          getJSON("/api/my/network?lang=" + ui.getLang())
+        ]);
+
+        const [ipv4, ipv6] = await Promise.all([
+          checkIPVersion(checkConfig, "IPv4"),
+          checkIPVersion(checkConfig, "IPv6")
+        ]);
+
+        await Promise.all([
+          cacheIPResult(ipv4, 4),
+          cacheIPResult(ipv6, 6)
+        ]);
+
+        currentIP = myip && myip.ip ? myip.ip : "";
+        renderConnInfo(myip, ipv4, ipv6);
+        renderNetworkInfo(network);
+
+        const [ipv4Detail, ipv6Detail] = await Promise.all([
+          loadEgressDetail(ipv4),
+          loadEgressDetail(ipv6)
+        ]);
+        renderEgressInfo(ipv4Detail, ipv6Detail);
+      } catch (err) {
+        document.getElementById("connInfo").innerHTML = `<span class="bad">${esc(err.message)}</span>`;
+        document.getElementById("networkInfo").innerHTML = `<span class="bad">${esc(err.message)}</span>`;
+        document.getElementById("egressInfo").innerHTML = `<span class="bad">${esc(err.message)}</span>`;
+      }
+
+      try {
+        await detectBrowserNAT(currentIP);
+      } catch (err) {
+        document.getElementById("natInfo").innerHTML = `<span class="bad">${esc(err.message || t("natFailed"))}</span>`;
+        document.getElementById("candidates").textContent = `${t("natFailed")}: ${err.message || ""}`;
+      }
+    }
+
+    function rerenderWithLanguage() {
+      init();
+    }
+
+    ui.bindControls({ onLanguageChanged: rerenderWithLanguage });
+    ui.applyI18n();
+    renderAPIExamples();
+    const copyCandidatesBtn = document.getElementById("copyCandidatesBtn");
+    if (copyCandidatesBtn) {
+      copyCandidatesBtn.addEventListener("click", copyCandidates);
+    }
+    if (window.AppMobileNav && window.AppMobileNav.init) {
+      window.AppMobileNav.init({
+        toggleId: "menuToggleBtn",
+        menuId: "toolbar",
+        mediaQuery: "(max-width: 980px)",
+        openClass: "is-open",
+        linkSelector: "a.btn"
+      });
+    }
+    init();
+  </script>
+</body>
+</html>
